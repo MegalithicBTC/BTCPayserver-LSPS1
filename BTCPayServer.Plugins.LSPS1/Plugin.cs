@@ -1,29 +1,27 @@
-using BTCPayServer.Abstractions.Contracts;
-using BTCPayServer.Abstractions.Models;
-using BTCPayServer.Abstractions.Services;
-using BTCPayServer.Plugins.Template.Services;
+// Plugin.cs
+// using BTCPayServer.Abstractions.Plugins;   // BaseBTCPayServerPlugin
+using BTCPayServer.Abstractions.Contracts; // IUIExtension.PluginDependency
+using BTCPayServer.Abstractions.Models;    // UIExtension
+using BTCPayServer.Abstractions.Services;  // IUIExtension
+using BTCPayServer.Plugins.LSPS1.Services;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace BTCPayServer.Plugins.Template;
+namespace BTCPayServer.Plugins.LSPS1;
 
 public class Plugin : BaseBTCPayServerPlugin
 {
     public override IBTCPayServerPlugin.PluginDependency[] Dependencies { get; } =
     {
-        new IBTCPayServerPlugin.PluginDependency { Identifier = nameof(BTCPayServer), Condition = ">=1.12.0" }
+        new() { Identifier = nameof(BTCPayServer), Condition = ">=1.12.0" }
     };
 
     public override void Execute(IServiceCollection services)
     {
-        services.AddSingleton<IUIExtension>(new UIExtension("TemplatePluginHeaderNav", "header-nav"));
-        services.AddHostedService<ApplicationPartsLogger>();
-        services.AddHostedService<PluginMigrationRunner>();
-        services.AddSingleton<MyPluginService>();
-        services.AddSingleton<MyPluginDbContextFactory>();
-        services.AddDbContext<MyPluginDbContext>((provider, o) =>
-        {
-            var factory = provider.GetRequiredService<MyPluginDbContextFactory>();
-            factory.ConfigureBuilder(o);
-        });
+        // Adds a link in the BTCPay header (zone "header-nav")
+        services.AddSingleton<IUIExtension>(
+            new UIExtension("Lsps1PluginHeaderNav", "header-nav"));
+
+        // Your lightweight, no-DB service
+        services.AddSingleton<LSPS1Service>();
     }
 }

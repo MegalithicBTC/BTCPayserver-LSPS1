@@ -49,9 +49,17 @@
     </ProjectReference>
   </ItemGroup>
   -->
-
+<!-- 
   <ItemGroup>
     <ProjectReference Include="..\btcpayserver\BTCPayServer\BTCPayServer.csproj" />
     <EmbeddedResource Include="Resources\**" />
-  </ItemGroup>
+  </ItemGroup> -->
+<ItemGroup>
+  <ProjectReference Include="..\..\btcpayserver\BTCPayServer.Abstractions\BTCPayServer.Abstractions.csproj">
+    <Private>false</Private>
+    <StaticWebAssetsEnabled>false</StaticWebAssetsEnabled>
+  </ProjectReference>
+
+  <EmbeddedResource Include="Resources\**" />
+</ItemGroup>
 </Project>
