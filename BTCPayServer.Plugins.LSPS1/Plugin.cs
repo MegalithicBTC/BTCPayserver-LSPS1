@@ -1,8 +1,7 @@
 // Plugin.cs
-//using BTCPayServer.Abstractions.Plugins;   // BaseBTCPayServerPlugin
-using BTCPayServer.Abstractions.Contracts; // IUIExtension.PluginDependency
-using BTCPayServer.Abstractions.Models;    // UIExtension
-using BTCPayServer.Abstractions.Services;  // IUIExtension
+using BTCPayServer.Abstractions.Contracts;
+using BTCPayServer.Abstractions.Models;
+using BTCPayServer.Abstractions.Services;
 using BTCPayServer.Plugins.LSPS1.Services;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -17,11 +16,10 @@ public class Plugin : BaseBTCPayServerPlugin
 
     public override void Execute(IServiceCollection services)
     {
-        // Adds a link in the BTCPay header (zone "header-nav")
         services.AddSingleton<IUIExtension>(
             new UIExtension("Lsps1PluginHeaderNav", "header-nav"));
 
-        // Your lightweight, no-DB service
-        services.AddSingleton<LSPS1Service>();
+        // tiny service with HttpClient + lightning helpers
+        services.AddHttpClient<LSPS1Service>();
     }
 }

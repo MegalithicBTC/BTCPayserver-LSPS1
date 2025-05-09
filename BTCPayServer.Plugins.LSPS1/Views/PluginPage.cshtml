@@ -1,0 +1,32 @@
+@model BTCPayServer.Plugins.LSPS1.PluginPageViewModel
+@using Microsoft.AspNetCore.Antiforgery
+@inject IAntiforgery AntiXsrf
+
+@{
+    ViewData.SetActivePage(PluginNavPages.Index, "Get Lightning Channel");
+    var xsrf = AntiXsrf.GetAndStoreTokens(HttpContext).RequestToken;
+}
+
+<h1>@ViewData["Title"]</h1>
+
+<button id="lsps-getinfo" class="btn btn-primary">Get info / connect</button>
+<span id="lsps-status" class="ms-3 text-muted"></span>
+
+@section Scripts {
+<script nonce="@Context.Items["CSPNonce"]">
+(() => {
+  const btn    = document.getElementById('lsps-getinfo');
+  const status = document.getElementById('lsps-status');
+  btn.addEventListener('click', async () => {
+    status.textContent = 'Working…';
+    const res = await fetch('@Url.Action("GetInfoAndMaybeConnect", "LSPS1", new { storeId = Model.StoreId })',
+      { method: 'POST',
+        headers: { 'Content-Type':'application/json',
+                   'RequestVerificationToken':'@xsrf' } });
+    const j = await res.json();
+    status.textContent = j.msg;
+    status.className   = j.ok ? 'ms-3 text-success' : 'ms-3 text-danger';
+  });
+})();
+</script>
+}
