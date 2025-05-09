@@ -1,5 +1,5 @@
 // Plugin.cs
-// using BTCPayServer.Abstractions.Plugins;   // BaseBTCPayServerPlugin
+//using BTCPayServer.Abstractions.Plugins;   // BaseBTCPayServerPlugin
 using BTCPayServer.Abstractions.Contracts; // IUIExtension.PluginDependency
 using BTCPayServer.Abstractions.Models;    // UIExtension
 using BTCPayServer.Abstractions.Services;  // IUIExtension
