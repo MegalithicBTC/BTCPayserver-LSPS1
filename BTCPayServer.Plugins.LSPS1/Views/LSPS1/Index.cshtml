@@ -18,6 +18,41 @@
        to get inbound Lightning Network capacity for your node.</p>
 </div>
 
+<!-- Channel Configuration Section -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h2 class="h4 mb-0">Configure Your Channel</h2>
+    </div>
+    <div class="card-body">
+        <!-- Channel Size Slider -->
+        <div class="mb-4">
+            <label for="channel-size-slider" class="form-label fw-semibold">Channel Size</label>
+            <div class="d-flex align-items-center mb-2">
+                <input type="range" class="form-range flex-grow-1 me-3" id="channel-size-slider">
+                <span id="channel-size-display" class="text-nowrap fw-semibold">1,000,000 sats</span>
+            </div>
+            <small class="text-muted">Select the size of your inbound channel.</small>
+        </div>
+
+        <!-- Node Public Key Input -->
+        <div class="mb-4">
+            <label for="node-public-key" class="form-label fw-semibold">Your Node Public Key</label>
+            <input type="text" class="form-control" id="node-public-key" 
+                   placeholder="Enter your node's public key (66 hex characters)">
+            <div id="node-key-validation" class="form-text"></div>
+            <small class="text-muted">The public key of the node that will receive this channel.</small>
+        </div>
+
+        <!-- Order Button -->
+        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+            <button id="get-price-button" class="btn btn-primary" disabled>Get Price</button>
+        </div>
+    </div>
+</div>
+
+<!-- Order Result Section -->
+<div id="order-result" class="mb-4"></div>
+
 <!-- Hidden data needed for JavaScript -->
 <input type="hidden" id="store-id" value="@Model.StoreId" />
 <input type="hidden" id="request-verification-token" value="@xsrf" />
@@ -39,7 +74,7 @@
     }
 </div>
 
-<!-- Subtle connection status footer with TEMPORARY PROMINENT dropdown for testing -->
+<!-- Subtle connection status footer with LSP dropdown menu -->
 <div class="mt-5 pt-4 border-top">
     <div class="d-flex align-items-center justify-content-end text-muted small">
         <!-- Connection Status -->
@@ -54,7 +89,7 @@
             }
         </span>
         
-        <!-- TEMPORARY: More prominent LSP Dropdown Menu -->
+        <!-- LSP Dropdown Menu -->
         <div class="dropdown ms-2">
             <button id="lsps1MenuButton" class="btn btn-outline-secondary btn-sm rounded-pill" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                 Options
@@ -67,10 +102,9 @@
                 @foreach (var lsp in Model.AvailableLsps)
                 {
                     <li>
-                        <a class="dropdown-item @(lsp.Slug == Model.SelectedLspSlug && Model.ConnectionSuccessful ? "active" : "")" 
-                           href="#" 
-                           data-lsp-slug="@lsp.Slug"
-                           onclick="event.stopPropagation();">
+                      <a class="dropdown-item @(lsp.Slug == Model.SelectedLspSlug && Model.ConnectionSuccessful ? "active" : "")" 
+                        href="#" 
+                        data-lsp-slug="@lsp.Slug">
                             @lsp.Name
                         </a>
                     </li>

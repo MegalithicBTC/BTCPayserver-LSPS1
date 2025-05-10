@@ -49,7 +49,7 @@ const LspManager = {
       
       const self = this; // Store reference for use in event handler
       items.forEach(item => {
-        // Use function to ensure proper "this" context
+        // Add event listener to handle LSP selection
         item.addEventListener('click', function(e) {
           e.preventDefault();
           e.stopPropagation(); // Stop event from bubbling up
@@ -68,7 +68,7 @@ const LspManager = {
       e.stopPropagation(); // Stop event from bubbling up
       
       // Get necessary data
-      const lspSlug = e.target.dataset.lspSlug;
+      const lspSlug = e.currentTarget.dataset.lspSlug;
       const storeId = document.getElementById("store-id").value;
       
       console.log("Selecting LSP:", lspSlug);
