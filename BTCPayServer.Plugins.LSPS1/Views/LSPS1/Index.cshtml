@@ -10,15 +10,72 @@
     var xsrf = AntiXsrf.GetAndStoreTokens(Context).RequestToken;
 }
 
-<h1>@ViewData["Title"]</h1>
+<h1>Get Inbound Lightning Payments</h1>
 
-
-<div class="form-group mb-3">
-    <button id="lsps-connect" class="btn btn-primary">Connect to Lightning Service Provider</button>
-    <span id="status-message" class="ms-3"></span>
+<div class="content mb-5">
+    <!-- Main content goes here -->
+    <p>This plugin helps you establish connection with a Lightning Service Provider (LSP) 
+       to get inbound Lightning Network capacity for your node.</p>
 </div>
 
+<!-- Hidden data needed for JavaScript -->
 <input type="hidden" id="store-id" value="@Model.StoreId" />
 <input type="hidden" id="request-verification-token" value="@xsrf" />
+<input type="hidden" id="is-connected" value="@Model.ConnectionSuccessful.ToString().ToLower()" />
+<input type="hidden" id="connection-message" value="@Model.ConnectionMessage" />
+<input type="hidden" id="selected-lsp-slug" value="@Model.SelectedLspSlug" />
+<input type="hidden" id="connected-lsp-name" value="@(Model.ConnectedLsp?.Name ?? "")" />
+
+<!-- Available LSPs data -->
+<div id="available-lsps" class="d-none">
+    @foreach (var lsp in Model.AvailableLsps)
+    {
+        <div 
+            data-lsp-slug="@lsp.Slug" 
+            data-lsp-name="@lsp.Name"
+            data-lsp-selected="@(lsp.Slug == Model.SelectedLspSlug ? "true" : "false")">
+        </div>
+    }
+</div>
+
+<!-- Subtle connection status footer with TEMPORARY PROMINENT dropdown for testing -->
+<div class="mt-5 pt-4 border-top">
+    <div class="d-flex align-items-center justify-content-end text-muted small">
+        <!-- Connection Status -->
+        <span id="connection-status">
+            @if (Model.ConnectionSuccessful)
+            {
+                <span class="text-muted"><i class="fa fa-circle text-success me-1" style="font-size: 8px;"></i> Connected to LSP</span>
+            }
+            else
+            {
+                <span class="text-muted"><i class="fa fa-circle text-danger me-1" style="font-size: 8px;"></i> Not connected</span>
+            }
+        </span>
+        
+        <!-- TEMPORARY: More prominent LSP Dropdown Menu -->
+        <div class="dropdown ms-2">
+            <button id="lspMenuButton" class="btn btn-outline-secondary btn-sm rounded-pill" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                Options
+                <svg role="img" class="icon ms-1" style="width: 12px; height: 12px;">
+                    <use href="/img/icon-sprite.svg#caret-down"></use>
+                </svg>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="lspMenuButton">
+                <li><h6 class="dropdown-header">Choose LSP</h6></li>
+                @foreach (var lsp in Model.AvailableLsps)
+                {
+                    <li>
+                        <a class="dropdown-item @(lsp.Slug == Model.SelectedLspSlug && Model.ConnectionSuccessful ? "active" : "")" 
+                           href="#" 
+                           data-lsp-slug="@lsp.Slug">
+                            @lsp.Name
+                        </a>
+                    </li>
+                }
+            </ul>
+        </div>
+    </div>
+</div>
 
 <script src="~/Resources/js/lspIndex.js" asp-append-version="true"></script>
