@@ -32,6 +32,8 @@
                       ExcludeAssets="runtime;native;build;buildTransitive;contentFiles" />
 
     <EmbeddedResource Include="Resources\**" />
+      <Watch Include="Resources\**\*.js" />
+  <Watch Include="Resources\**\*.css" />
   </ItemGroup>
 
   <!-- ── NuGet packages we use directly ─────────────── -->

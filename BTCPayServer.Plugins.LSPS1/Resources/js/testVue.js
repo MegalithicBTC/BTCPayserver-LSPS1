@@ -1,3 +1,1 @@
-
-console.log('Loading testVue.js three...');
-
+console.log("Loading testVue.js 12...");
