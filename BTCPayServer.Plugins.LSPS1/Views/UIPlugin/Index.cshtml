@@ -2,12 +2,15 @@
 @using BTCPayServer.Plugins.LSPS1.Views
 @using Microsoft.AspNetCore.Antiforgery
 @inject IAntiforgery AntiXsrf
+@inject BTCPayServer.Security.ContentSecurityPolicies csp
 @model BTCPayServer.Plugins.LSPS1.Controllers.UIPluginController.PluginPageViewModel
 
 @{
     ViewData.SetActivePage(PluginNavPages.Index, "Get Lightning Channel");
-    // ✨ FIX: Context is already HttpContext
     var xsrf = AntiXsrf.GetAndStoreTokens(Context).RequestToken;
+    
+    // Allow the onclick handler in our button
+    csp.AllowUnsafeHashes("connectToLightningServiceProvider(event)");
 }
 
 <h1>@ViewData["Title"]</h1>
@@ -15,31 +18,35 @@
 <h2>Get A Lightning Channel</h2>
 
 <div class="form-group mb-3">
-    <button id="lsps-connect" class="btn btn-primary">Connect to Lightning Service Provider</button>
+    <button id="lsps-connect" class="btn btn-primary" onclick="connectToLightningServiceProvider(event)">Connect to Lightning Service Provider</button>
     <span id="status-message" class="ms-3"></span>
 </div>
 
-@section Scripts {
+<input type="hidden" id="store-id" value="@Model.StoreId" />
+<input type="hidden" id="request-verification-token" value="@xsrf" />
+
+<!-- Move the script out of the PageFootContent section and directly into the page -->
 <script nonce="@Context.Items["CSPNonce"]">
-    document.getElementById('lsps-connect').addEventListener('click', async () => {
+    async function connectToLightningServiceProvider(event) {
         const statusEl = document.getElementById('status-message');
         statusEl.textContent = 'Connecting…';
         statusEl.className = 'ms-3 text-muted';
 
         try {
-            const storeId = '@Model.StoreId';
+            const storeId = document.getElementById('store-id').value;
+            const token = document.getElementById('request-verification-token').value;
+            
             const res = await fetch(`/stores/${storeId}/plugins/lsps1/get-info-connect`, {
                 method: 'POST',
-                headers: { 'RequestVerificationToken': '@xsrf' }
+                headers: { 'RequestVerificationToken': token }
             });
 
             const { ok, msg } = await res.json();
             statusEl.textContent = msg;
-            statusEl.className   = ok ? 'ms-3 text-success' : 'ms-3 text-danger';
+            statusEl.className = ok ? 'ms-3 text-success' : 'ms-3 text-danger';
         } catch (err) {
             statusEl.textContent = 'Error: ' + err.message;
-            statusEl.className   = 'ms-3 text-danger';
+            statusEl.className = 'ms-3 text-danger';
         }
-    });
+    }
 </script>
-}
