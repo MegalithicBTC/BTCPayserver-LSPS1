@@ -25,6 +25,7 @@
 <input type="hidden" id="connection-message" value="@Model.ConnectionMessage" />
 <input type="hidden" id="selected-lsp-slug" value="@Model.SelectedLspSlug" />
 <input type="hidden" id="connected-lsp-name" value="@(Model.ConnectedLsp?.Name ?? "")" />
+<input type="hidden" id="lsp-info-data" value="@Model.LspInfoJson" />
 
 <!-- Available LSPs data -->
 <div id="available-lsps" class="d-none">
@@ -55,20 +56,21 @@
         
         <!-- TEMPORARY: More prominent LSP Dropdown Menu -->
         <div class="dropdown ms-2">
-            <button id="lspMenuButton" class="btn btn-outline-secondary btn-sm rounded-pill" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <button id="lsps1MenuButton" class="btn btn-outline-secondary btn-sm rounded-pill" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                 Options
                 <svg role="img" class="icon ms-1" style="width: 12px; height: 12px;">
                     <use href="/img/icon-sprite.svg#caret-down"></use>
                 </svg>
             </button>
-            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="lspMenuButton">
+            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="lsps1MenuButton">
                 <li><h6 class="dropdown-header">Choose LSP</h6></li>
                 @foreach (var lsp in Model.AvailableLsps)
                 {
                     <li>
                         <a class="dropdown-item @(lsp.Slug == Model.SelectedLspSlug && Model.ConnectionSuccessful ? "active" : "")" 
                            href="#" 
-                           data-lsp-slug="@lsp.Slug">
+                           data-lsp-slug="@lsp.Slug"
+                           onclick="event.stopPropagation();">
                             @lsp.Name
                         </a>
                     </li>
@@ -78,4 +80,5 @@
     </div>
 </div>
 
-<script src="~/Resources/js/lspIndex.js" asp-append-version="true"></script>
+<!-- At the bottom of the file -->
+<script type="module" src="~/Resources/js/lspIndex.js" asp-append-version="true"></script>
