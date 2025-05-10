@@ -5,6 +5,8 @@
 @inject BTCPayServer.Security.ContentSecurityPolicies csp
 @model BTCPayServer.Plugins.LSPS1.Controllers.UIPluginController.PluginPageViewModel
 
+<script src="~/Resources/js/testVue.js" type="text/javascript"> </script>
+
 @{
     ViewData.SetActivePage(PluginNavPages.Index, "Get Lightning Channel");
     var xsrf = AntiXsrf.GetAndStoreTokens(Context).RequestToken;
@@ -25,8 +27,8 @@
 <input type="hidden" id="store-id" value="@Model.StoreId" />
 <input type="hidden" id="request-verification-token" value="@xsrf" />
 
-<!-- Move the script out of the PageFootContent section and directly into the page -->
-<script nonce="@Context.Items["CSPNonce"]">
+@* <!-- Move the script out of the PageFootContent section and directly into the page -->
+ <script nonce="@Context.Items["CSPNonce"]">
     async function connectToLightningServiceProvider(event) {
         const statusEl = document.getElementById('status-message');
         statusEl.textContent = 'Connecting…';
@@ -49,4 +51,4 @@
             statusEl.className = 'ms-3 text-danger';
         }
     }
-</script>
+</script>  *@
