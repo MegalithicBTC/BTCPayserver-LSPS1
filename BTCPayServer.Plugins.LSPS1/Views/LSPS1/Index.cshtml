@@ -19,29 +19,13 @@
 <!-- React root element -->
 <div id="lsps1-root"></div>
 
-<!-- Hidden data needed for JavaScript -->
-<input type="hidden" id="store-id" value="@Model.StoreId" />
-<input type="hidden" id="request-verification-token" value="@xsrf" />
-<input type="hidden" id="is-connected" value="@Model.ConnectionSuccessful.ToString().ToLower()" />
-<input type="hidden" id="connection-message" value="@Model.ConnectionMessage" />
-<input type="hidden" id="selected-lsp-slug" value="@Model.SelectedLspSlug" />
-<input type="hidden" id="connected-lsp-name" value="@(Model.ConnectedLsp?.Name ?? "")" />
-<input type="hidden" id="lsp-info-data" value="@Model.LspInfoJson" />
+<!-- Consolidated data for JavaScript in a single script tag -->
+<script id="lsps1-data" type="application/json">
+    @Html.Raw(ViewBag.ClientDataJson)
+</script>
 
-<!-- Hidden div containing the node's public key -->
-<div id="node-public-key-value" style="display: none;">@Model.NodePublicKey</div>
-
-<!-- Available LSPs data -->
-<div id="available-lsps" class="d-none">
-    @foreach (var lsp in Model.AvailableLsps)
-    {
-        <div 
-            data-lsp-slug="@lsp.Slug" 
-            data-lsp-name="@lsp.Name"
-            data-lsp-selected="@(lsp.Slug == Model.SelectedLspSlug ? "true" : "false")">
-        </div>
-    }
-</div>
+<!-- Add CSRF token separately as it's not part of our model -->
+<div id="request-verification-token" data-token="@xsrf" style="display: none;"></div>
 
 <!-- Include React libraries -->
 <script src="~/Resources/js/vendor/react.production.min.js" asp-append-version="true"></script>

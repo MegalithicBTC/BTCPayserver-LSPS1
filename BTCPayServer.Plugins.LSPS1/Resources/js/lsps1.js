@@ -7,29 +7,36 @@ document.addEventListener("DOMContentLoaded", () => {
       // Initialize managers
       window.LspManager.init();
       
-      // Get the LSP info
-      const lspInfo = window.LspManager.loadLspInfo();
-      if (lspInfo && Object.keys(lspInfo).length > 0) {
-        window.ChannelOrderManager.init(lspInfo);
+      // Get the data from the consolidated JSON block
+      const dataElement = document.getElementById('lsps1-data');
+      let props = {};
+      
+      if (dataElement) {
+        try {
+          // Parse the JSON data
+          props = JSON.parse(dataElement.textContent);
+          
+          // Get the LSP info
+          if (props.initialLspInfoJson && props.initialLspInfoJson !== 'null') {
+            const lspInfo = typeof props.initialLspInfoJson === 'string' 
+              ? JSON.parse(props.initialLspInfoJson) 
+              : props.initialLspInfoJson;
+              
+            if (lspInfo && Object.keys(lspInfo).length > 0) {
+              window.ChannelOrderManager.init(lspInfo);
+            }
+          }
+        } catch (parseError) {
+          console.error("Error parsing LSPS1 data:", parseError);
+        }
       }
       
-      // Gather data from hidden inputs
-      const props = {
-        storeId: document.getElementById('store-id')?.value || '',
-        xsrfToken: document.getElementById('request-verification-token')?.value || '',
-        initialConnectionStatus: document.getElementById('is-connected')?.value || 'false',
-        initialConnectionMessage: document.getElementById('connection-message')?.value || '',
-        initialSelectedLspSlug: document.getElementById('selected-lsp-slug')?.value || '',
-        initialConnectedLspName: document.getElementById('connected-lsp-name')?.value || '',
-        initialLspInfoJson: document.getElementById('lsp-info-data')?.value || '{}',
-        nodePublicKey: document.getElementById('node-public-key-value')?.textContent.trim() || '',
-        availableLsps: Array.from(document.querySelectorAll('#available-lsps [data-lsp-slug]')).map(el => ({
-          slug: el.dataset.lspSlug,
-          name: el.dataset.lspName,
-          selected: el.dataset.lspSelected === 'true'
-        }))
-      };
-
+      // Add the CSRF token which we still need to get separately for security reasons
+      const xsrfElement = document.getElementById('request-verification-token');
+      if (xsrfElement) {
+        props.xsrfToken = xsrfElement.dataset.token || '';
+      }
+      
       // Render the app using React 18's createRoot API
       const root = ReactDOM.createRoot(rootElement);
       root.render(React.createElement(window.LSPS1App, props));

@@ -83,6 +83,31 @@ namespace BTCPayServer.Plugins.LSPS1.Controllers
                 NodePublicKey = nodePublicKey ?? string.Empty
             };
             
+            // Create a client data object with all the properties needed by JavaScript
+            var clientData = new
+            {
+                storeId = vm.StoreId,
+                initialConnectionStatus = vm.ConnectionSuccessful,
+                initialConnectionMessage = vm.ConnectionMessage,
+                initialSelectedLspSlug = vm.SelectedLspSlug,
+                initialConnectedLspName = vm.ConnectedLsp?.Name ?? string.Empty,
+                initialLspInfoJson = vm.LspInfoJson,
+                nodePublicKey = vm.NodePublicKey,
+                availableLsps = vm.AvailableLsps.Select(lsp => new 
+                {
+                    slug = lsp.Slug,
+                    name = lsp.Name,
+                    selected = lsp.Slug == vm.SelectedLspSlug
+                })
+            };
+            
+            // Serialize the data for the client
+            ViewBag.ClientDataJson = JsonSerializer.Serialize(clientData, new JsonSerializerOptions 
+            { 
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                WriteIndented = false
+            });
+            
             return View(vm);
         }
 
