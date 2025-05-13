@@ -22,7 +22,12 @@ public class Plugin : BaseBTCPayServerPlugin
         // If your plugin needs to be visible under the Lightning section, add this extension point too
         services.AddUIExtension("lightning-nav", "LSPS1/LightningNavExtension");
 
-        // tiny service with HttpClient + lightning helpers
+        // Register our refactored services
+        services.AddSingleton<LspProviderService>();
+        services.AddSingleton<LightningNodeService>();
+        services.AddSingleton<OrderService>();
+        
+        // Add the main service that coordinates the other services
         services.AddHttpClient<LSPS1Service>();
     }
 }
