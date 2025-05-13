@@ -45,22 +45,38 @@ window.LSPS1App = function(props) {
     initialize();
   }, []);
   
+  // Determine content based on lightning node availability
+  const renderContent = () => {
+    // If user has no lightning node connected, show setup instructions
+    if (!props.hasLightningNode) {
+      return React.createElement(window.LightningNodeSetup, {
+        storeId: props.storeId,
+        lightningSetupUrl: props.lightningSetupUrl
+      });
+    }
+    
+    // Otherwise show the regular channel configuration components
+    return React.createElement(React.Fragment, null,
+      React.createElement(window.ChannelConfiguration, {
+        channelSize: channelSize,
+        setChannelSize: setChannelSize,
+        lspInfo: lspInfo,
+        nodePublicKey: props.nodePublicKey,
+        xsrfToken: props.xsrfToken,
+        setOrderResult: setOrderResult
+      }),
+      
+      orderResult && React.createElement(window.OrderResult, { result: orderResult })
+    );
+  };
+  
   return React.createElement('div', { className: 'lsps1-container' },
     loading ? 
       React.createElement(window.LoadingSpinner) : 
-      React.createElement(React.Fragment, null,
-        React.createElement(window.ChannelConfiguration, {
-          channelSize: channelSize,
-          setChannelSize: setChannelSize,
-          lspInfo: lspInfo,
-          nodePublicKey: props.nodePublicKey,
-          xsrfToken: props.xsrfToken,
-          setOrderResult: setOrderResult
-        }),
-        
-        orderResult && React.createElement(window.OrderResult, { result: orderResult })
-      ),
-    React.createElement(window.ConnectionFooter, {
+      renderContent(),
+    
+    // Only show connection footer if a lightning node is configured
+    props.hasLightningNode && React.createElement(window.ConnectionFooter, {
       connectionSuccessful: connectionSuccessful,
       connectedLspName: connectedLspName,
       availableLsps: props.availableLsps,

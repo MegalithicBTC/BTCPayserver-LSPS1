@@ -3,8 +3,8 @@
 @using Microsoft.AspNetCore.Mvc.TagHelpers
 
 <li class="nav-item">
-    <a asp-controller="LSPS1" asp-action="Index" asp-route-storeId="@ViewContext.RouteData.Values["storeId"]" class="nav-link @ViewData.IsActivePage(PluginNavPages.Index)">
-        <!-- existing SVG and other content -->
-        <span>Get Lightning Channel</span>
+    <a asp-controller="LSPS1" asp-action="Index" asp-route-storeId="@ViewContext.RouteData.Values["storeId"]" class="nav-link @ViewData.ActivePageClass(PluginNavPages.Index)">
+        <vc:icon symbol="nav-lightning"/>
+        <span>Get Lightning Inbound</span>
     </a>
 </li>

@@ -16,8 +16,11 @@ public class Plugin : BaseBTCPayServerPlugin
 
     public override void Execute(IServiceCollection services)
     {
-        services.AddSingleton<IUIExtension>(
-            new UIExtension("Lsps1PluginHeaderNav", "header-nav"));
+        // Register UI extensions
+        services.AddUIExtension("header-nav", "LSPS1/NavExtension");
+        
+        // If your plugin needs to be visible under the Lightning section, add this extension point too
+        services.AddUIExtension("lightning-nav", "LSPS1/LightningNavExtension");
 
         // tiny service with HttpClient + lightning helpers
         services.AddHttpClient<LSPS1Service>();
