@@ -1,0 +1,123 @@
+@using BTCPayServer.Abstractions.Extensions
+@using BTCPayServer.Plugins.LSPS1.Views
+@using Microsoft.AspNetCore.Antiforgery
+@inject IAntiforgery AntiXsrf
+@inject BTCPayServer.Security.ContentSecurityPolicies csp
+@model BTCPayServer.Plugins.LSPS1.Controllers.LSPS1Controller.PluginPageViewModel
+
+@{
+    ViewData.SetActivePage(PluginNavPages.Index, "Get Lightning Channel");
+    var xsrf = AntiXsrf.GetAndStoreTokens(Context).RequestToken;
+}
+
+<h1>Enable Inbound Lightning Payments Test</h1>
+
+<div class="content mb-5">
+    <!-- Main content goes here -->
+    <p>Get a Lightning channel with inbound capacity so you can receive payments.</p>
+</div>
+
+<!-- Loading Spinner - Shown until LSP data loads -->
+<div id="loading-spinner" class="text-center my-5">
+    <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+    </div>
+    <p class="mt-3">Connecting to Lightning Service Provider...</p>
+</div>
+
+<!-- Channel Configuration Section - Hidden until data loads -->
+<div id="channel-configuration" class="d-none">
+    <div class="card mb-4">
+        <div class="card-header">
+            <h2 class="h4 mb-0">What size channel do you want?</h2>
+        </div>
+        <div class="card-body">
+            <!-- Channel Size Slider -->
+            <div class="mb-4">
+                <label for="channel-size-slider" class="form-label fw-semibold">Channel Size</label>
+                <div class="d-flex align-items-center mb-2">
+                    <input type="range" class="form-range flex-grow-1 me-3" id="channel-size-slider">
+                    <span id="channel-size-display" class="text-nowrap fw-semibold">1,000,000 sats</span>
+                </div>
+                <small class="text-muted">We recommend a channel of at least 1,000,000 satoshis in size.</small>
+            </div>
+
+            <!-- Order Button -->
+            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                <button id="get-price-button" class="btn btn-primary" disabled>Get Price</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Order Result Section -->
+    <div id="order-result" class="mb-4"></div>
+</div>
+
+<!-- Hidden data needed for JavaScript -->
+<input type="hidden" id="store-id" value="@Model.StoreId" />
+<input type="hidden" id="request-verification-token" value="@xsrf" />
+<input type="hidden" id="is-connected" value="@Model.ConnectionSuccessful.ToString().ToLower()" />
+<input type="hidden" id="connection-message" value="@Model.ConnectionMessage" />
+<input type="hidden" id="selected-lsp-slug" value="@Model.SelectedLspSlug" />
+<input type="hidden" id="connected-lsp-name" value="@(Model.ConnectedLsp?.Name ?? "")" />
+<input type="hidden" id="lsp-info-data" value="@Model.LspInfoJson" />
+
+<!-- Hidden div containing the node's public key -->
+<div id="node-public-key-value" style="display: none;">@Model.NodePublicKey</div>
+
+<!-- Available LSPs data -->
+<div id="available-lsps" class="d-none">
+    @foreach (var lsp in Model.AvailableLsps)
+    {
+        <div 
+            data-lsp-slug="@lsp.Slug" 
+            data-lsp-name="@lsp.Name"
+            data-lsp-selected="@(lsp.Slug == Model.SelectedLspSlug ? "true" : "false")">
+        </div>
+    }
+</div>
+
+<!-- Subtle connection status footer with LSP dropdown menu -->
+<div class="mt-5 pt-4 border-top">
+    <div class="d-flex align-items-center justify-content-end text-muted small">
+        <!-- Connection Status -->
+        <span id="connection-status">
+            @if (Model.ConnectionSuccessful)
+            {
+                <span class="text-muted"><i class="fa fa-circle text-success me-1" style="font-size: 8px;"></i> Connected to LSP</span>
+            }
+            else
+            {
+                <span class="text-muted"><i class="fa fa-circle text-danger me-1" style="font-size: 8px;"></i> Not connected</span>
+            }
+        </span>
+        
+        <!-- LSP Dropdown Menu -->
+        <div class="dropdown ms-2">
+            <button id="lsps1MenuButton" class="btn btn-outline-secondary btn-sm rounded-pill" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                Options
+                <svg role="img" class="icon ms-1" style="width: 12px; height: 12px;">
+                    <use href="/img/icon-sprite.svg#caret-down"></use>
+                </svg>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="lsps1MenuButton">
+                <li><h6 class="dropdown-header">Choose LSP</h6></li>
+                @foreach (var lsp in Model.AvailableLsps)
+                {
+                    <li>
+                      <a class="dropdown-item @(lsp.Slug == Model.SelectedLspSlug && Model.ConnectionSuccessful ? "active" : "")" 
+                        href="#" 
+                        data-lsp-slug="@lsp.Slug">
+                            @lsp.Name
+                        </a>
+                    </li>
+                }
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- At the bottom of the file -->
+<script type="module" src="~/Resources/js/lspIndex.js" asp-append-version="true"></script>
+<script type="module" src="~/Resources/js/vendor/react.production.min.js" asp-append-version="true"></script>
+<script type="module" src="~/Resources/js/vendor/react-dom.production.min.js" asp-append-version="true"></script>
