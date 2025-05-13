@@ -50,7 +50,35 @@ namespace BTCPayServer.Plugins.LSPS1.Services
                 
                 _logger.LogInformation("Attempting to retrieve Lightning node public key for store {StoreId}", storeId);
                 
-                // Following exactly how UIPublicLightningNodeInfoController does it
+                // Direct approach: Get node info using ILightningClient which is the most reliable way
+                // This directly maps to the "id" field in lightning-cli getinfo for Core Lightning
+                try
+                {
+                    // Get the Lightning client
+                    var client = GetLightningClient(store);
+                    if (client != null)
+                    {
+                        _logger.LogInformation("Retrieving node info directly from Lightning client");
+                        var nodeInfo = await client.GetInfo();
+                        
+                        // For Core Lightning, the NodeId is available in the NodeInfoList (corresponds to 'id' in getinfo)
+                        var firstNode = nodeInfo?.NodeInfoList?.FirstOrDefault();
+                        if (firstNode?.NodeId != null)
+                        {
+                            string pubKey = firstNode.NodeId.ToString();
+                            _logger.LogInformation("Successfully retrieved Lightning node public key directly: {PubKey}", pubKey);
+                            return pubKey;
+                        }
+                        
+                        _logger.LogWarning("Lightning client.GetInfo() did not return a valid NodeId");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning("Error retrieving node info directly: {Message}", ex.Message);
+                }
+                
+                // Fallback: Try via lightning payment handler if direct approach fails
                 var paymentMethodId = PaymentTypes.LN.GetPaymentMethodId("BTC");
                 
                 // Check if handler exists for the payment method
@@ -71,38 +99,30 @@ namespace BTCPayServer.Plugins.LSPS1.Services
                     return null;
                 }
                 
-                _logger.LogInformation("Found Lightning configuration for store {StoreId}, retrieving node info", storeId);
+                _logger.LogInformation("Found Lightning configuration for store {StoreId}, trying handler approach", storeId);
                 
-                // Get node info directly using the handler
-                var nodeInfoList = await handler.GetNodeInfo(lightningConfig, null);
-                
-                // Extract the public key from node URI (pubkey@host:port)
-                if (nodeInfoList.Any())
+                try
                 {
-                    string nodeUri = nodeInfoList.First().ToString();
-                    _logger.LogInformation("Found Lightning node URI: {NodeUri}", nodeUri);
+                    // Get node info using the handler
+                    var nodeInfoList = await handler.GetNodeInfo(lightningConfig, null);
                     
-                    int atIndex = nodeUri.IndexOf('@');
-                    
-                    if (atIndex > 0)
+                    if (nodeInfoList.Any())
                     {
-                        string pubKey = nodeUri.Substring(0, atIndex);
-                        _logger.LogInformation("Successfully extracted Lightning node public key: {PubKey}", pubKey);
-                        return pubKey;
+                        _logger.LogInformation("Retrieved {Count} node info entries via handler", nodeInfoList.Count());
+                        
+                        // Extract the NodeId directly from the first node info
+                        var firstNodeInfo = nodeInfoList.First();
+                        if (firstNodeInfo.NodeId != null)
+                        {
+                            string pubKey = firstNodeInfo.NodeId.ToString();
+                            _logger.LogInformation("Successfully retrieved Lightning node public key from handler: {PubKey}", pubKey);
+                            return pubKey;
+                        }
                     }
                 }
-                
-                // If we couldn't extract the public key from the URI, try another approach
-                if (nodeInfoList.Any())
+                catch (Exception ex)
                 {
-                    var nodeInfo = nodeInfoList.First();
-                    // The NodeId property is a PubKey object, need to convert to string
-                    if (nodeInfo.NodeId != null)
-                    {
-                        string pubKey = nodeInfo.NodeId.ToString();
-                        _logger.LogInformation("Successfully retrieved Lightning node public key from NodeId: {PubKey}", pubKey);
-                        return pubKey;
-                    }
+                    _logger.LogWarning("Error retrieving node info via handler: {Message}", ex.Message);
                 }
                 
                 _logger.LogWarning("Could not extract public key from Lightning node for store {StoreId}", storeId);
