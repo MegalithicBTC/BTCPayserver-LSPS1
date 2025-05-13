@@ -2,11 +2,13 @@
 window.LSPS1App = function(props) {
   const [loading, setLoading] = React.useState(true);
   const [userNodeIsConnectedToLsp, setUserNodeIsConnectedToLsp] = React.useState(props.userNodeIsConnectedToLsp);
+  const [userNodeFailedToConnectToLsp, setUserNodeFailedToConnectToLsp] = React.useState(props.userNodeFailedToConnectToLsp);
   const [connectionMessage, setConnectionMessage] = React.useState(""); // Calculated in UI based on connection status
   const [connectedLspName, setConnectedLspName] = React.useState(props.connectedLspName);
   const [lspInfo, setLspInfo] = React.useState(JSON.parse(props.lspInfoJson || '{}'));
   const [orderResult, setOrderResult] = React.useState(null);
   const [channelSize, setChannelSize] = React.useState(1000000);
+  const [userChannels, setUserChannels] = React.useState(props.userChannels || []);
   
   React.useEffect(() => {
     console.log("Initializing LSPS1 App");
@@ -14,6 +16,8 @@ window.LSPS1App = function(props) {
     // Set connection message based on status
     if (userNodeIsConnectedToLsp && connectedLspName) {
       setConnectionMessage(`Connected to ${connectedLspName}`);
+    } else if (userNodeFailedToConnectToLsp) {
+      setConnectionMessage(`Failed to connect to Lightning Service Provider`);
     } else {
       setConnectionMessage('Not connected to any Lightning Service Provider');
     }
@@ -32,6 +36,13 @@ window.LSPS1App = function(props) {
           console.log("LSP info already loaded");
           setLoading(false);
           return;
+        }
+        
+        // Display channels information
+        if (userChannels && userChannels.length > 0) {
+          console.log(`User has ${userChannels.length} active Lightning channels`);
+        } else {
+          console.log("User has no active Lightning channels");
         }
         
         // Attempt to load LSP info
@@ -74,6 +85,11 @@ window.LSPS1App = function(props) {
     
     // Otherwise show the regular channel configuration components
     return React.createElement(React.Fragment, null,
+      // Show existing channels if any
+      userChannels && userChannels.length > 0 && React.createElement(window.ExistingChannels, {
+        channels: userChannels
+      }),
+      
       React.createElement(window.ChannelConfiguration, {
         channelSize: channelSize,
         setChannelSize: setChannelSize,
@@ -95,6 +111,7 @@ window.LSPS1App = function(props) {
     // Only show connection footer if a lightning node is configured
     props.userHasLightningNode && React.createElement(window.ConnectionFooter, {
       userNodeIsConnectedToLsp: userNodeIsConnectedToLsp,
+      userNodeFailedToConnectToLsp: userNodeFailedToConnectToLsp,
       connectedLspName: connectedLspName,
       availableLsps: props.availableLsps,
       storeId: props.storeId

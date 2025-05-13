@@ -1,5 +1,6 @@
 using BTCPayServer.Abstractions.Constants;
 using BTCPayServer.Client;
+using BTCPayServer.Configuration;
 using BTCPayServer.Data;
 using BTCPayServer.Lightning;
 using BTCPayServer.Plugins.LSPS1.Models;
@@ -13,6 +14,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using BTCPayServer.Payments;
 using BTCPayServer.Payments.Lightning;
@@ -61,15 +63,43 @@ namespace BTCPayServer.Plugins.LSPS1.Controllers
             
             // Initialize variables
             bool userNodeIsConnectedToLsp = false;
+            bool userNodeFailedToConnectToLsp = false;
             LspProvider? connectedLsp = null;
             LSPS1GetInfoResponse? lspInfo = null;
+            IEnumerable<Dictionary<string, object>> channels = Array.Empty<Dictionary<string, object>>();
             
             // Only try to connect to LSP if user has a Lightning node
             if (userHasLightningNode)
             {
+                // Get the user's current channels
+                var lightningChannels = await GetLightningChannels(store);
+                channels = lightningChannels.Select(c => {
+                    // Extract what we can safely
+                    var response = new Dictionary<string, object>
+                    {
+                        ["remotePubKey"] = c.RemoteNode?.ToString() ?? "",
+                        ["capacity"] = c.Capacity.MilliSatoshi,
+                        ["localBalance"] = c.LocalBalance?.MilliSatoshi ?? 0,
+                        ["active"] = c.IsActive,
+                        ["isPublic"] = c.IsPublic
+                    };
+                    
+                    // Try to add channel identifiers safely
+                    try {
+                        // Different implementations might use different property names
+                        response["channelId"] = c.ToString() ?? "unknown";
+                    }
+                    catch {
+                        response["channelId"] = "unknown";
+                    }
+                    
+                    return response;
+                }).ToList();
+                
                 // Try to connect to the LSP
                 var result = await _svc.TryConnectToLspAsync(storeId, lsp);
                 userNodeIsConnectedToLsp = result.success;
+                userNodeFailedToConnectToLsp = !result.success;
                 connectedLsp = result.selectedLsp;
                 
                 // Fetch LSP info if connected
@@ -88,7 +118,8 @@ namespace BTCPayServer.Plugins.LSPS1.Controllers
                 LspInfo = lspInfo,
                 NodePublicKey = nodePublicKey ?? string.Empty,
                 UserHasLightningNode = userHasLightningNode,
-                UserNodeIsConnectedToLsp = userNodeIsConnectedToLsp
+                UserNodeIsConnectedToLsp = userNodeIsConnectedToLsp,
+                UserNodeFailedToConnectToLsp = userNodeFailedToConnectToLsp
             };
             
             // Create a client data object with all the properties needed by JavaScript
@@ -96,11 +127,13 @@ namespace BTCPayServer.Plugins.LSPS1.Controllers
             {
                 storeId = vm.StoreId,
                 userNodeIsConnectedToLsp = vm.UserNodeIsConnectedToLsp,
+                userNodeFailedToConnectToLsp = vm.UserNodeFailedToConnectToLsp,
                 selectedLspSlug = vm.SelectedLspSlug,
                 connectedLspName = vm.ConnectedLsp?.Name ?? string.Empty,
                 lspInfoJson = vm.LspInfoJson,
                 nodePublicKey = vm.NodePublicKey,
                 userHasLightningNode = vm.UserHasLightningNode,
+                userChannels = channels,
                 availableLsps = vm.AvailableLsps.Select(lsp => new 
                 {
                     slug = lsp.Slug,
@@ -117,6 +150,121 @@ namespace BTCPayServer.Plugins.LSPS1.Controllers
             });
             
             return View(vm);
+        }
+
+        // Connect to other Lightning nodes
+        private async Task<bool> ConnectToNode(StoreData store, string nodeUri, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                _logger.LogInformation("Attempting to connect to Lightning node {NodeUri} for store {StoreId}", nodeUri, store.Id);
+                
+                // Get Lightning client for this store
+                var lightningClient = GetLightningClient(store);
+                if (lightningClient == null)
+                {
+                    _logger.LogWarning("Could not get Lightning client for store {StoreId}", store.Id);
+                    return false;
+                }
+                
+                // Convert string URI to NodeInfo
+                if (!NodeInfo.TryParse(nodeUri, out var nodeInfo))
+                {
+                    _logger.LogWarning("Invalid node URI format: {Uri}", nodeUri);
+                    return false;
+                }
+                
+                // Connect to the node
+                var result = await lightningClient.ConnectTo(nodeInfo, cancellationToken);
+                bool success = result == ConnectionResult.Ok;
+                
+                if (success)
+                    _logger.LogInformation("Successfully connected to Lightning node {NodeUri} for store {StoreId}", nodeUri, store.Id);
+                else
+                    _logger.LogWarning("Failed to connect to Lightning node {NodeUri} for store {StoreId}", nodeUri, store.Id);
+                    
+                return success;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error connecting to Lightning node {NodeUri} for store {StoreId}: {Message}", 
+                    nodeUri, store.Id, ex.Message);
+                return false;
+            }
+        }
+        
+        // Get a list of currently open channels
+        private async Task<IEnumerable<LightningChannel>> GetLightningChannels(StoreData store, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                _logger.LogInformation("Retrieving Lightning channels for store {StoreId}", store.Id);
+                
+                // Get Lightning client for this store
+                var lightningClient = GetLightningClient(store);
+                if (lightningClient == null)
+                {
+                    _logger.LogWarning("Could not get Lightning client for store {StoreId}", store.Id);
+                    return Array.Empty<LightningChannel>();
+                }
+                
+                // Get the list of channels
+                var channels = await lightningClient.ListChannels(cancellationToken);
+                
+                _logger.LogInformation("Retrieved {Count} Lightning channels for store {StoreId}", 
+                    channels.Length, store.Id);
+                
+                return channels;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving Lightning channels for store {StoreId}: {Message}", 
+                    store.Id, ex.Message);
+                return Array.Empty<LightningChannel>();
+            }
+        }
+        
+        // Get Lightning client for a store - helper method used by the other methods
+        private ILightningClient? GetLightningClient(StoreData store)
+        {
+            try
+            {
+                // Following exactly how UIPublicLightningNodeInfoController does it
+                var paymentMethodId = PaymentTypes.LN.GetPaymentMethodId("BTC");
+                
+                // Check if handler exists for the payment method
+                if (_paymentMethodHandlerDictionary.TryGet(paymentMethodId) is not LightningLikePaymentHandler handler)
+                {
+                    _logger.LogWarning("Lightning payment handler not found for store {StoreId}", store.Id);
+                    return null;
+                }
+                
+                // Get Lightning config from store
+                var lightningConfig = store.GetPaymentMethodConfig<LightningPaymentMethodConfig>(
+                    paymentMethodId, 
+                    _paymentMethodHandlerDictionary);
+                    
+                if (lightningConfig == null)
+                {
+                    _logger.LogWarning("Store {StoreId} has no Lightning configuration", store.Id);
+                    return null;
+                }
+
+                // Get the network for BTC
+                var network = _networkProvider.GetNetwork<BTCPayNetwork>("BTC");
+                
+                // Create the Lightning client
+                return lightningConfig.CreateLightningClient(network, 
+                    Microsoft.Extensions.Options.Options.Create(
+                        new LightningNetworkOptions()).Value, 
+                    _lightningClientFactory);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating Lightning client for store {StoreId}: {Message}", 
+                    store.Id, ex.Message);
+                return null;
+            }
         }
 
         private async Task<string?> GetNodePublicKey(StoreData store)
@@ -203,11 +351,82 @@ namespace BTCPayServer.Plugins.LSPS1.Controllers
             public string NodePublicKey { get; set; } = string.Empty;
             public bool UserHasLightningNode { get; set; }
             public bool UserNodeIsConnectedToLsp { get; set; }
+            public bool UserNodeFailedToConnectToLsp { get; set; }
             
             // Serialized version for JavaScript
             public string LspInfoJson => LspInfo != null 
                 ? JsonSerializer.Serialize(LspInfo) 
                 : "null";
+        }
+
+        [HttpGet("api/nodepubkey")]
+        public async Task<IActionResult> GetNodePublicKeyApi(string storeId)
+        {
+            var store = await _storeRepository.FindStore(storeId);
+            if (store == null)
+                return NotFound();
+                
+            var pubKey = await GetNodePublicKey(store);
+            if (string.IsNullOrEmpty(pubKey))
+                return NotFound("No Lightning node configured for this store");
+                
+            return Ok(new { pubKey });
+        }
+        
+        [HttpPost("api/connect")]
+        public async Task<IActionResult> ConnectToNodeApi(string storeId, [FromBody] ConnectNodeRequest request)
+        {
+            if (string.IsNullOrEmpty(request.NodeUri))
+                return BadRequest("Node URI is required");
+                
+            var store = await _storeRepository.FindStore(storeId);
+            if (store == null)
+                return NotFound("Store not found");
+                
+            var success = await ConnectToNode(store, request.NodeUri);
+            return Ok(new { success });
+        }
+        
+        [HttpGet("api/channels")]
+        public async Task<IActionResult> GetChannelsApi(string storeId)
+        {
+            var store = await _storeRepository.FindStore(storeId);
+            if (store == null)
+                return NotFound("Store not found");
+                
+            var channels = await GetLightningChannels(store);
+            
+            // Convert to simpler response model for API consumption
+            // Using a more generic approach to avoid property name issues
+            var channelsResponse = channels.Select(c => {
+                // Extract what we can safely
+                var response = new Dictionary<string, object>
+                {
+                    ["remotePubKey"] = c.RemoteNode?.ToString() ?? "",
+                    ["capacity"] = c.Capacity.MilliSatoshi,
+                    ["localBalance"] = c.LocalBalance?.MilliSatoshi ?? 0,
+                    ["active"] = c.IsActive,
+                    ["isPublic"] = c.IsPublic
+                };
+                
+                // Try to add channel identifiers safely
+                try {
+                    // Different implementations might use different property names
+                    response["channelId"] = c.ToString() ?? "unknown";
+                }
+                catch {
+                    response["channelId"] = "unknown";
+                }
+                
+                return response;
+            });
+            
+            return Ok(channelsResponse);
+        }
+        
+        public class ConnectNodeRequest
+        {
+            public string NodeUri { get; set; } = string.Empty;
         }
     }
 }
