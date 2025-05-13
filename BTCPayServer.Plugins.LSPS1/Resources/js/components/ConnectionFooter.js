@@ -1,6 +1,6 @@
 // ConnectionFooter component - Shows connection status and LSP selection
 window.ConnectionFooter = function(footerProps) {
-  const { connectionSuccessful, connectedLspName, availableLsps, storeId } = footerProps;
+  const { userNodeIsConnectedToLsp, connectedLspName, availableLsps, storeId } = footerProps;
   
   // Create dropdown items if there are multiple LSPs
   let lspSelection = null;
@@ -25,8 +25,8 @@ window.ConnectionFooter = function(footerProps) {
   }
   
   return React.createElement('div', { className: 'connection-footer mt-4' },
-    React.createElement('div', { className: connectionSuccessful ? 'alert alert-success' : 'alert alert-warning' },
-      connectionSuccessful 
+    React.createElement('div', { className: userNodeIsConnectedToLsp ? 'alert alert-success' : 'alert alert-warning' },
+      userNodeIsConnectedToLsp 
         ? `Connected to ${connectedLspName}`
         : 'Not connected to any Lightning Service Provider'
     ),

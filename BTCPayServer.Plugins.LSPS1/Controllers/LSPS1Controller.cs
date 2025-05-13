@@ -55,50 +55,52 @@ namespace BTCPayServer.Plugins.LSPS1.Controllers
             if (store == null)
                 return NotFound();
 
-            // Try to connect to the LSP immediately when page loads
-            var result = await _svc.TryConnectToLspAsync(storeId, lsp);
-            bool ok = result.success;
-            string msg = result.message;
-            LspProvider? connectedLsp = result.selectedLsp;
-            
-            // Fetch LSP info if connected
-            LSPS1GetInfoResponse? lspInfo = null;
-            if (ok && connectedLsp != null)
-            {
-                lspInfo = await _svc.GetLspInfoAsync(storeId, connectedLsp);
-            }
-            
-            // Get node's public key
+            // First check if a valid Lightning node configuration exists
             string? nodePublicKey = await GetNodePublicKey(store);
+            bool userHasLightningNode = !string.IsNullOrEmpty(nodePublicKey);
             
-            // Check if a valid Lightning node configuration exists
-            bool hasLightningNode = !string.IsNullOrEmpty(nodePublicKey);
+            // Initialize variables
+            bool userNodeIsConnectedToLsp = false;
+            LspProvider? connectedLsp = null;
+            LSPS1GetInfoResponse? lspInfo = null;
+            
+            // Only try to connect to LSP if user has a Lightning node
+            if (userHasLightningNode)
+            {
+                // Try to connect to the LSP
+                var result = await _svc.TryConnectToLspAsync(storeId, lsp);
+                userNodeIsConnectedToLsp = result.success;
+                connectedLsp = result.selectedLsp;
+                
+                // Fetch LSP info if connected
+                if (userNodeIsConnectedToLsp && connectedLsp != null)
+                {
+                    lspInfo = await _svc.GetLspInfoAsync(storeId, connectedLsp);
+                }
+            }
             
             var vm = new PluginPageViewModel
             {
                 StoreId = storeId,
                 AvailableLsps = _svc.GetAllLsps(),
-                ConnectionMessage = msg,
-                ConnectionSuccessful = ok,
                 ConnectedLsp = connectedLsp,
                 SelectedLspSlug = lsp ?? connectedLsp?.Slug ?? string.Empty,
                 LspInfo = lspInfo,
                 NodePublicKey = nodePublicKey ?? string.Empty,
-                HasLightningNode = hasLightningNode
+                UserHasLightningNode = userHasLightningNode,
+                UserNodeIsConnectedToLsp = userNodeIsConnectedToLsp
             };
             
             // Create a client data object with all the properties needed by JavaScript
             var clientData = new
             {
                 storeId = vm.StoreId,
-                initialConnectionStatus = vm.ConnectionSuccessful,
-                initialConnectionMessage = vm.ConnectionMessage,
-                initialSelectedLspSlug = vm.SelectedLspSlug,
-                initialConnectedLspName = vm.ConnectedLsp?.Name ?? string.Empty,
-                initialLspInfoJson = vm.LspInfoJson,
+                userNodeIsConnectedToLsp = vm.UserNodeIsConnectedToLsp,
+                selectedLspSlug = vm.SelectedLspSlug,
+                connectedLspName = vm.ConnectedLsp?.Name ?? string.Empty,
+                lspInfoJson = vm.LspInfoJson,
                 nodePublicKey = vm.NodePublicKey,
-                hasLightningNode = vm.HasLightningNode,
-                lightningSetupUrl = $"/stores/{vm.StoreId}/lightning/BTC/setup",
+                userHasLightningNode = vm.UserHasLightningNode,
                 availableLsps = vm.AvailableLsps.Select(lsp => new 
                 {
                     slug = lsp.Slug,
@@ -195,13 +197,12 @@ namespace BTCPayServer.Plugins.LSPS1.Controllers
         {
             public string StoreId { get; set; } = string.Empty;
             public IEnumerable<LspProvider> AvailableLsps { get; set; } = Array.Empty<LspProvider>();
-            public string ConnectionMessage { get; set; } = string.Empty;
-            public bool ConnectionSuccessful { get; set; }
             public LspProvider? ConnectedLsp { get; set; }
             public string SelectedLspSlug { get; set; } = string.Empty;
             public LSPS1GetInfoResponse? LspInfo { get; set; }
             public string NodePublicKey { get; set; } = string.Empty;
-            public bool HasLightningNode { get; set; }
+            public bool UserHasLightningNode { get; set; }
+            public bool UserNodeIsConnectedToLsp { get; set; }
             
             // Serialized version for JavaScript
             public string LspInfoJson => LspInfo != null 

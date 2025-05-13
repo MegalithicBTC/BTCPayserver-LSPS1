@@ -1,23 +1,40 @@
 // LSPS1App - Main application component
 window.LSPS1App = function(props) {
   const [loading, setLoading] = React.useState(true);
-  const [connectionSuccessful, setConnectionSuccessful] = React.useState(props.initialConnectionStatus === 'true');
-  const [connectionMessage, setConnectionMessage] = React.useState(props.initialConnectionMessage);
-  const [connectedLspName, setConnectedLspName] = React.useState(props.initialConnectedLspName);
-  const [lspInfo, setLspInfo] = React.useState(JSON.parse(props.initialLspInfoJson || '{}'));
+  const [userNodeIsConnectedToLsp, setUserNodeIsConnectedToLsp] = React.useState(props.userNodeIsConnectedToLsp);
+  const [connectionMessage, setConnectionMessage] = React.useState(""); // Calculated in UI based on connection status
+  const [connectedLspName, setConnectedLspName] = React.useState(props.connectedLspName);
+  const [lspInfo, setLspInfo] = React.useState(JSON.parse(props.lspInfoJson || '{}'));
   const [orderResult, setOrderResult] = React.useState(null);
   const [channelSize, setChannelSize] = React.useState(1000000);
   
   React.useEffect(() => {
     console.log("Initializing LSPS1 App");
     
+    // Set connection message based on status
+    if (userNodeIsConnectedToLsp && connectedLspName) {
+      setConnectionMessage(`Connected to ${connectedLspName}`);
+    } else {
+      setConnectionMessage('Not connected to any Lightning Service Provider');
+    }
+    
     const initialize = async () => {
       try {
-        if (lspInfo && Object.keys(lspInfo).length > 0) {
+        // If user has no Lightning node, don't attempt to load LSP info
+        if (!props.userHasLightningNode) {
+          console.log("No Lightning node configured, skipping LSP connection");
           setLoading(false);
           return;
         }
         
+        // If we already have LSP info loaded, we can skip fetching it
+        if (lspInfo && Object.keys(lspInfo).length > 0) {
+          console.log("LSP info already loaded");
+          setLoading(false);
+          return;
+        }
+        
+        // Attempt to load LSP info
         let attempts = 0;
         const checkInterval = setInterval(() => {
           const updatedInfo = window.LspManager.loadLspInfo();
@@ -48,10 +65,10 @@ window.LSPS1App = function(props) {
   // Determine content based on lightning node availability
   const renderContent = () => {
     // If user has no lightning node connected, show setup instructions
-    if (!props.hasLightningNode) {
+    if (!props.userHasLightningNode) {
       return React.createElement(window.LightningNodeSetup, {
         storeId: props.storeId,
-        lightningSetupUrl: props.lightningSetupUrl
+        lightningSetupUrl: `/stores/${props.storeId}/lightning/BTC/setup` // Generate URL from storeId
       });
     }
     
@@ -76,8 +93,8 @@ window.LSPS1App = function(props) {
       renderContent(),
     
     // Only show connection footer if a lightning node is configured
-    props.hasLightningNode && React.createElement(window.ConnectionFooter, {
-      connectionSuccessful: connectionSuccessful,
+    props.userHasLightningNode && React.createElement(window.ConnectionFooter, {
+      userNodeIsConnectedToLsp: userNodeIsConnectedToLsp,
       connectedLspName: connectedLspName,
       availableLsps: props.availableLsps,
       storeId: props.storeId
