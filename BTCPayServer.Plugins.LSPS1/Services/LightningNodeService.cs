@@ -246,9 +246,45 @@ namespace BTCPayServer.Plugins.LSPS1.Services
                     _logger.LogWarning("Could not get Lightning client for store {StoreId}", store.Id);
                     return Array.Empty<LightningChannel>();
                 }
+
+                _logger.LogDebug("Obtained Lightning client {ClientType}, about to call ListChannels", lightningClient.GetType().Name);
                 
                 // Get the list of channels
-                var channels = await lightningClient.ListChannels(cancellationToken);
+                LightningChannel[] channels;
+                try 
+                {
+                    channels = await lightningClient.ListChannels(cancellationToken);
+                }
+                catch (NotSupportedException)
+                {
+                    _logger.LogWarning("ListChannels not supported by lightning client {ClientType}", lightningClient.GetType().Name);
+                    return Array.Empty<LightningChannel>();
+                }
+                catch (NullReferenceException ex)
+                {
+                    _logger.LogWarning("ListChannels threw NullReferenceException from client {ClientType}: {Message}", 
+                        lightningClient.GetType().Name, ex.Message);
+                    return Array.Empty<LightningChannel>();
+                }
+                
+                // Log the channels response
+                _logger.LogDebug("Raw ListChannels response: {@Channels}", channels);
+                
+                if (channels == null)
+                {
+                    _logger.LogWarning("ListChannels returned null for store {StoreId}", store.Id);
+                    return Array.Empty<LightningChannel>();
+                }
+
+                // Log details of each channel
+                foreach (var channel in channels)
+                {
+                    _logger.LogDebug("Channel details: RemoteNode={RemoteNode}, Capacity={Capacity}, IsActive={IsActive}, IsPublic={IsPublic}", 
+                        channel.RemoteNode,
+                        channel.Capacity,
+                        channel.IsActive,
+                        channel.IsPublic);
+                }
                 
                 _logger.LogInformation("Retrieved {Count} Lightning channels for store {StoreId}", 
                     channels.Length, store.Id);
