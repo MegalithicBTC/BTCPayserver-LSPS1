@@ -23,9 +23,18 @@ window.ChannelOrderManager = {
       return false;
     }
     
+    // Store LSP and node info for order creation
     this.lspInfo = lspInfo;
     this.lspUrl = lspUrl;
     this.nodePublicKey = nodePublicKey;
+    
+    // Set up default options
+    this.options = {
+      lsp_id: lspInfo.id || '',
+      lsp_fee_amount: 0,
+      channel_expiry: 1008, // Default expiry in blocks (approximately 1 week)
+      announce_channel: true // Default to public channels
+    };
     
     // Process options if LspConfigManager is available
     if (window.LspConfigManager && typeof window.LspConfigManager.processChannelOptions === 'function') {
@@ -87,7 +96,44 @@ window.ChannelOrderManager = {
       
       // Try to use LspApiService if available
       if (window.LspApiService && typeof window.LspApiService.createOrder === 'function') {
-        return await window.LspApiService.createOrder(this.nodePublicKey, channelSize, isPrivate);
+        const response = await window.LspApiService.createOrder(this.nodePublicKey, channelSize, isPrivate);
+        
+        if (response.success && response.data) {
+          // Extract invoice and order details from the response
+          const orderId = response.data.order_id;
+          let invoice = null;
+          let paymentInfo = null;
+          
+          // Try to find the invoice in the response
+          if (response.data.payment && response.data.payment.bolt11) {
+            const bolt11Data = response.data.payment.bolt11;
+            invoice = bolt11Data.invoice;
+            paymentInfo = {
+              type: 'lightning',
+              state: bolt11Data.state,
+              expiresAt: bolt11Data.expires_at,
+              invoice: bolt11Data.invoice,
+              feeSats: bolt11Data.fee_total_sat,
+              totalSats: bolt11Data.order_total_sat
+            };
+          }
+          
+          // Start polling if we have an order ID
+          if (orderId) {
+            this.startOrderStatusPolling(orderId);
+          }
+          
+          return {
+            success: true,
+            orderId,
+            status: 'waiting_for_payment',
+            message: 'Order created successfully.',
+            paymentInfo,
+            data: response.data
+          };
+        }
+        
+        return response;
       } else {
         console.error("LspApiService not available for order creation");
         return { success: false, error: "Channel order service not available" };
@@ -119,6 +165,14 @@ window.ChannelOrderManager = {
       this.checkOrderStatus(orderId);
     }, 5000); // Poll every 5 seconds
     
+    // Also start channel polling if available
+    if (window.ChannelManager && typeof window.ChannelManager.startChannelPolling === 'function') {
+      console.log("Channel polling started at", new Date().toLocaleTimeString());
+      window.ChannelManager.startChannelPolling();
+    } else {
+      console.warn("ChannelManager.startChannelPolling not available, only polling orders");
+    }
+    
     return true;
   },
   
@@ -128,6 +182,11 @@ window.ChannelOrderManager = {
       console.log("Stopping order status polling");
       clearInterval(this.orderPollingInterval);
       this.orderPollingInterval = null;
+    }
+    
+    // Also stop channel polling if we were polling
+    if (window.ChannelManager && typeof window.ChannelManager.stopChannelPolling === 'function') {
+      window.ChannelManager.stopChannelPolling();
     }
   },
   

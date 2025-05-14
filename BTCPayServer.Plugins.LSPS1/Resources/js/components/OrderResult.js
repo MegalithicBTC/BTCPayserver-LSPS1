@@ -2,83 +2,96 @@
 window.OrderResult = function(resultProps) {
   const { result } = resultProps;
   
-  // Create state to store the latest order status updates
+  // Create state to store the latest order status updates and channel data
   const [orderStatus, setOrderStatus] = React.useState(null);
   const [lastPolled, setLastPolled] = React.useState(new Date());
-  const [pollingActive, setPollingActive] = React.useState(false);
-  
-  // Static method for the ChannelOrderManager to call
-  window.OrderResult.updateStatus = function(statusData) {
-    // Find all OrderResult instances and update them
-    const event = new CustomEvent('order-status-updated', { detail: statusData });
-    document.dispatchEvent(event);
-  };
+  const [channelData, setChannelData] = React.useState([]);
+  const [showTechnicalDetails, setShowTechnicalDetails] = React.useState(false);
   
   // Effect to listen for status updates
   React.useEffect(() => {
     const handleStatusUpdate = (event) => {
+      console.log("Order status update received:", event.detail);
       setOrderStatus(event.detail);
       setLastPolled(new Date());
     };
     
     document.addEventListener('order-status-updated', handleStatusUpdate);
     
+    // Listen for channel update events from ChannelManager
+    const handleChannelsUpdated = (event) => {
+      console.log("Channels updated in OrderResult:", event.detail);
+      setChannelData(event.detail);
+    };
+    
+    document.addEventListener('channels-updated', handleChannelsUpdated);
+    
     // Start polling for order status if we have a successful result with an orderId
-    if (result.success && result.data && result.data.order_id) {
-      console.log("Starting order status polling for order:", result.data.order_id);
+    if (result.success && result.orderId) {
+      console.log("Starting order status polling for order:", result.orderId);
       if (window.ChannelOrderManager && typeof window.ChannelOrderManager.startOrderStatusPolling === 'function') {
-        window.ChannelOrderManager.startOrderStatusPolling(result.data.order_id);
-        setPollingActive(true);
+        window.ChannelOrderManager.startOrderStatusPolling(result.orderId);
       }
     }
     
     return () => {
       document.removeEventListener('order-status-updated', handleStatusUpdate);
-      // Clean up polling when component unmounts
-      if (pollingActive && window.ChannelOrderManager && typeof window.ChannelOrderManager.stopOrderStatusPolling === 'function') {
-        window.ChannelOrderManager.stopOrderStatusPolling();
-      }
+      document.removeEventListener('channels-updated', handleChannelsUpdated);
     };
   }, [result]);
   
-  // Determine appropriate alert class based on result
-  const alertClass = result.success ? 'alert-success' : 'alert-danger';
-  
   // Get the most current status data
-  const statusData = orderStatus || (result.success ? result.data : null);
-
-  // Get the payment information for rendering
-  const renderPaymentInfo = () => {
-    if (!result.success || !statusData) {
-      return null;
+  const currentStatusData = React.useMemo(() => {
+    if (!orderStatus && !result) return null;
+    
+    // If we have orderStatus, merge it with channel data
+    if (orderStatus) {
+      return {
+        ...orderStatus,
+        channelData: channelData.length > 0 ? channelData : null,
+        paymentInfo: orderStatus.paymentInfo || result.paymentInfo,
+        data: orderStatus.data || result.data
+      };
     }
     
-    // Check for payment info from order status updates first
-    if (statusData.paymentInfo && statusData.paymentInfo.type === 'lightning' && statusData.paymentInfo.invoice) {
-      return window.OrderResultInvoice.renderInvoice(statusData.paymentInfo.invoice);
-    }
+    // Otherwise just use the initial result
+    return result;
+  }, [orderStatus, result, channelData]);
+  
+  // Determine appropriate alert class based on result and status
+  const alertClass = React.useMemo(() => {
+    if (!result.success) return 'alert-danger';
     
-    // For initial order response, check standard LSPS1 response format
-    if (statusData.payment && statusData.payment.bolt11 && statusData.payment.bolt11.invoice) {
-      return window.OrderResultInvoice.renderInvoice(statusData.payment.bolt11.invoice);
-    }
-    
-    // Fallback for any invoice field
-    if (statusData.invoice) {
-      return window.OrderResultInvoice.renderInvoice(statusData.invoice);
-    }
-    
-    return null;
-  };
+    // Check if order is completed
+    const isCompleted = currentStatusData?.order_state === "COMPLETED" || 
+                       currentStatusData?.status === "complete" || 
+                       currentStatusData?.status === "completed";
+                       
+    if (isCompleted) return 'alert-success';
+    if (currentStatusData?.status === 'failed') return 'alert-danger';
+    if (currentStatusData?.status === 'waiting_for_payment') return 'alert-warning';
+    return 'alert-info';
+  }, [result.success, currentStatusData]);
   
   return React.createElement('div', { className: `alert ${alertClass}` },
-    React.createElement('h4', null, result.success ? 'Channel Order Created' : 'Error Creating Channel Order'),
-    React.createElement('p', null, result.success ? 
-      'Your channel order has been created. Please pay the invoice below.' : 
-      `Error: ${window.OrderResultStatus.getErrorMessage(result.error)}`
+    React.createElement('div', { className: 'd-flex justify-content-between align-items-start' },
+      React.createElement('div', null,
+        React.createElement('h5', { className: 'alert-heading' }, 
+          result.success ? 'Success!' : 'Error'
+        ),
+        React.createElement('p', { className: 'mb-0' }, 
+          result.message || (result.success ? 'Order created successfully.' : 'Failed to create order.')
+        )
+      )
     ),
-    renderPaymentInfo(),
-    window.OrderResultStatus.renderStatus(statusData, lastPolled),
-    window.OrderResultStatus.renderRawJson(orderStatus || (result.success ? result.data : { error: result.error }))
+    
+    // Show status if we have data
+    currentStatusData && window.OrderResultStatus ? 
+      window.OrderResultStatus.renderStatus(currentStatusData, lastPolled) : null
   );
+};
+
+// Add static updateStatus method
+window.OrderResult.updateStatus = function(status) {
+  document.dispatchEvent(new CustomEvent('order-status-updated', { detail: status }));
 };

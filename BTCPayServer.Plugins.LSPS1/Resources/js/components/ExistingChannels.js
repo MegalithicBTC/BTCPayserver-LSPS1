@@ -25,6 +25,9 @@ window.ExistingChannels = function(channelsProps) {
     const pubKeys = getLspPubKeysFromStorage();
     setLspPubKeys(pubKeys);
     
+    // Log all channels each time we update (this helps with debugging)
+    console.log("All Lightning Channels:", JSON.stringify(allChannels, null, 2));
+    
     return allChannels.filter(channel => {
       const remotePubKey = channel.remotePubKey || '';
       return pubKeys.some(lspKey => remotePubKey.startsWith(lspKey));
@@ -34,12 +37,15 @@ window.ExistingChannels = function(channelsProps) {
   // Initialize and update channels
   React.useEffect(() => {
     // Initial filtering
-    setFilteredChannels(filterLspChannels(initialChannels || []));
+    const initialFiltered = filterLspChannels(initialChannels || []);
+    setFilteredChannels(initialFiltered);
+    console.log("Initial filtered channels:", JSON.stringify(initialFiltered, null, 2));
     
     // Listen for channel update events
     const handleChannelsUpdated = (event) => {
       console.log("Channels updated event received:", event.detail);
       const updatedFilteredChannels = filterLspChannels(event.detail);
+      console.log("Updated filtered channels:", JSON.stringify(updatedFilteredChannels, null, 2));
       setFilteredChannels(updatedFilteredChannels);
       setLastUpdated(new Date());
       setIsRefreshing(false);
@@ -52,7 +58,7 @@ window.ExistingChannels = function(channelsProps) {
     if (window.ChannelManager && typeof window.ChannelManager.startChannelPolling === 'function') {
       window.ChannelManager.startChannelPolling();
       setPollingActive(true);
-      console.log("Channel polling started");
+      console.log("Channel polling started at", new Date().toLocaleTimeString());
     } else {
       console.warn("ChannelManager.startChannelPolling not available");
     }
@@ -64,7 +70,7 @@ window.ExistingChannels = function(channelsProps) {
       // Stop polling when the component unmounts
       if (pollingActive && window.ChannelManager && typeof window.ChannelManager.stopChannelPolling === 'function') {
         window.ChannelManager.stopChannelPolling();
-        console.log("Channel polling stopped");
+        console.log("Channel polling stopped at", new Date().toLocaleTimeString());
       }
     };
   }, [initialChannels]);
@@ -91,6 +97,7 @@ window.ExistingChannels = function(channelsProps) {
   const handleRefresh = async () => {
     setIsRefreshing(true);
     if (window.ChannelManager && typeof window.ChannelManager.refreshChannels === 'function') {
+      console.log("Manual refresh triggered at", new Date().toLocaleTimeString());
       await window.ChannelManager.refreshChannels();
     } else {
       console.warn("ChannelManager.refreshChannels not available");

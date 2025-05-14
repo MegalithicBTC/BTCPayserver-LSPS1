@@ -150,21 +150,16 @@ window.LspApiService = {
     }
     
     try {
-      // For LSPS1 API, we directly append the endpoint to the base URL which ends with /v1
       const baseUrl = this.lspUrl.endsWith('/') ? this.lspUrl : this.lspUrl + '/';
       const statusUrl = `${baseUrl}get_order?order_id=${orderId}`;
       
       console.log("Checking order status at:", statusUrl);
       
-      // Use a timeout for the fetch operation
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
       
       try {
-        const response = await fetch(statusUrl, {
-          signal: controller.signal
-        });
-        
+        const response = await fetch(statusUrl, { signal: controller.signal });
         clearTimeout(timeoutId);
         
         if (!response.ok) {
@@ -204,70 +199,68 @@ window.LspApiService = {
         const result = await response.json();
         console.log("Order status from LSP:", result);
         
-        // Map the order_state to a standard status
-        let status = "processing";
-        
-        if (result.order_state) {
-          const state = result.order_state.toUpperCase();
-          status = state === "COMPLETED" ? "complete" :
-                  state === "FAILED" ? "failed" :
-                  state === "CREATED" ? "waiting_for_payment" :
-                  "processing";
-        }
+        // Check for COMPLETED state first
+        const isCompleted = result.order_state === "COMPLETED";
+        let orderStatus = isCompleted ? "complete" :
+                       result.order_state === "FAILED" ? "failed" :
+                       result.order_state === "CREATED" ? "waiting_for_payment" :
+                       "processing";
         
         // Get payment state information
         let paymentInfo = null;
-        
-        if (result.payment) {
+        if (result.payment && result.payment.bolt11) {
           // Check for Lightning payment (bolt11)
-          if (result.payment.bolt11) {
-            const bolt11State = result.payment.bolt11.state?.toUpperCase();
-            
-            paymentInfo = {
-              type: 'lightning',
-              state: bolt11State,
-              expiresAt: result.payment.bolt11.expires_at,
-              invoice: result.payment.bolt11.invoice,
-              feeSats: result.payment.bolt11.fee_total_sat,
-              totalSats: result.payment.bolt11.order_total_sat
-            };
-            
-            // Update status based on payment state
-            if (bolt11State === 'EXPECT_PAYMENT') {
-              status = 'waiting_for_payment';
-            } else if (bolt11State === 'HOLD') {
-              status = 'payment_received';
-            } else if (bolt11State === 'PAID') {
-              status = 'processing';
-            } else if (bolt11State === 'REFUNDED' || bolt11State === 'CANCELLED') {
-              status = 'failed';
-              paymentInfo.refundReason = 'Payment was cancelled or refunded';
-            }
+          const bolt11State = result.payment.bolt11.state?.toUpperCase();
+          
+          paymentInfo = {
+            type: 'lightning',
+            state: bolt11State,
+            expiresAt: result.payment.bolt11.expires_at,
+            invoice: result.payment.bolt11.invoice,
+            feeSats: result.payment.bolt11.fee_total_sat,
+            totalSats: result.payment.bolt11.order_total_sat
+          };
+          
+          // Update status based on payment state
+          if (bolt11State === 'EXPECT_PAYMENT') {
+            orderStatus = 'waiting_for_payment';
+          } else if (bolt11State === 'HOLD') {
+            orderStatus = 'payment_received';
+          } else if (bolt11State === 'PAID') {
+            orderStatus = 'processing';
+          } else if (bolt11State === 'REFUNDED' || bolt11State === 'CANCELLED') {
+            orderStatus = 'failed';
+            paymentInfo.refundReason = 'Payment was cancelled or refunded';
           }
         }
         
-        // Check channel information
+        // Enhanced channel information
         let channelInfo = null;
         if (result.channel) {
           channelInfo = {
             fundedAt: result.channel.funded_at,
             fundingOutpoint: result.channel.funding_outpoint,
-            expiresAt: result.channel.expires_at
+            expiresAt: result.channel.expires_at,
+            channelId: result.channel.channel_id,
+            state: result.channel.state
           };
-          
-          // If we have channel data and funding outpoint, the channel is complete
-          if (result.channel.funding_outpoint) {
-            status = 'complete';
+        }
+        
+        // If completed, trigger channel polling to show channel details
+        if (isCompleted && window.ChannelManager) {
+          console.log("Order COMPLETED, ensuring channel polling is active");
+          if (typeof window.ChannelManager.startChannelPolling === 'function') {
+            window.ChannelManager.startChannelPolling();
           }
         }
         
         return {
           success: true,
-          status,
+          status: orderStatus,
+          order_state: result.order_state, // Include raw order_state
           orderId: result.order_id || orderId,
           paymentInfo,
           channelInfo,
-          rawState: result.order_state,
           details: result
         };
       } catch (fetchError) {

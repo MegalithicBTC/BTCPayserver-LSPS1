@@ -3,9 +3,10 @@ window.OrderResultInvoice = {
   /**
    * Renders a Lightning invoice with QR code
    * @param {string} invoice - The BOLT11 invoice to render
+   * @param {object} statusData - The full status data object to get total amount
    * @returns {React.Element} - React element with the rendered invoice
    */
-  renderInvoice: function(invoice) {
+  renderInvoice: function(invoice, statusData) {
     // Generate lightning: URL for the invoice
     const lightningUrl = `lightning:${invoice}`;
     
@@ -49,16 +50,27 @@ window.OrderResultInvoice = {
         .catch(err => console.error('Failed to copy invoice:', err));
     };
     
-    // Try to decode the invoice to show amount
-    let amountSats = null;
-    try {
-      // Simple heuristic to extract amount from standard bolt11 invoice
-      const amountMatch = invoice.match(/ln[a-z0-9]+([0-9]+)[a-z0-9]/i);
-      if (amountMatch && amountMatch[1]) {
-        amountSats = parseInt(amountMatch[1], 10);
+    // Get the amount from statusData if available
+    let totalSats = null;
+    if (statusData) {
+      if (statusData.paymentInfo && statusData.paymentInfo.totalSats) {
+        totalSats = statusData.paymentInfo.totalSats;
+      } else if (statusData.payment && statusData.payment.bolt11 && statusData.payment.bolt11.order_total_sat) {
+        totalSats = statusData.payment.bolt11.order_total_sat;
       }
-    } catch (e) {
-      console.error("Error parsing invoice amount:", e);
+    }
+    
+    // As a fallback, try to decode the invoice to show amount if we couldn't get it from statusData
+    if (!totalSats) {
+      try {
+        // Simple heuristic to extract amount from standard bolt11 invoice
+        const amountMatch = invoice.match(/ln[a-z0-9]+([0-9]+)[a-z0-9]/i);
+        if (amountMatch && amountMatch[1]) {
+          totalSats = parseInt(amountMatch[1], 10);
+        }
+      } catch (e) {
+        console.error("Error parsing invoice amount:", e);
+      }
     }
     
     // Create a simple text QR representation when the QRCode library isn't available
@@ -116,9 +128,6 @@ window.OrderResultInvoice = {
                         correctLevel: QRCode.CorrectLevel.M,
                         useSVG: true
                       });
-                      
-                      // Add lightning bolt overlay
-                      this.addLightningOverlay(el);
                     } catch (err) {
                       console.error('Error creating QR code after loading library', err);
                       el.appendChild(createTextQR(lightningUrl));
@@ -148,9 +157,6 @@ window.OrderResultInvoice = {
                   correctLevel: QRCode.CorrectLevel.M,
                   useSVG: true
                 });
-                
-                // Add lightning bolt overlay
-                this.addLightningOverlay(el);
               }
             } catch (err) {
               console.error('Error rendering QR code:', err);
@@ -161,54 +167,18 @@ window.OrderResultInvoice = {
       }),
       
       // Show amount if available
-      amountSats && React.createElement('p', { className: 'mb-3 fs-5' },
-        `${amountSats.toLocaleString()} satoshis`
+      totalSats && React.createElement('p', { className: 'mb-3 fs-5' },
+        `${Number(totalSats).toLocaleString()} satoshis`
       ),
       
       // Copy button
       React.createElement('button', {
-        className: 'btn btn-outline-primary me-2 mb-3',
+        className: 'btn btn-primary mb-3',
         type: 'button',
         onClick: copyToClipboard
       }, 
       React.createElement('i', { className: 'bi bi-clipboard me-1' }),
-      'Copy Invoice'),
-      
-      // Open in wallet button
-      React.createElement('a', {
-        href: lightningUrl,
-        className: 'btn btn-primary mb-3',
-        target: '_blank',
-        rel: 'noopener noreferrer'
-      }, 
-      React.createElement('i', { className: 'bi bi-lightning-charge-fill me-1' }),
-      'Open in Lightning Wallet')
+      'Copy Invoice')
     );
-  },
-  
-  // Helper method to add lightning bolt overlay
-  addLightningOverlay: function(containerEl) {
-    const overlay = document.createElement('div');
-    overlay.style.position = 'absolute';
-    overlay.style.top = '50%';
-    overlay.style.left = '50%';
-    overlay.style.transform = 'translate(-50%, -50%)';
-    overlay.style.width = '60px';
-    overlay.style.height = '60px';
-    overlay.style.background = 'white';
-    overlay.style.borderRadius = '50%';
-    overlay.style.display = 'flex';
-    overlay.style.alignItems = 'center';
-    overlay.style.justifyContent = 'center';
-    overlay.style.boxShadow = '0 2px 5px rgba(0,0,0,0.2)';
-    
-    const img = document.createElement('img');
-    img.src = '/Resources/img/lightning-bolt.svg';
-    img.alt = 'Lightning';
-    img.style.width = '40px';
-    img.style.height = '40px';
-    
-    overlay.appendChild(img);
-    containerEl.appendChild(overlay);
   }
 };
