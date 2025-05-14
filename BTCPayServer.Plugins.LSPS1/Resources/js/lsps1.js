@@ -1,4 +1,8 @@
 // Main initialization script for LSPS1 plugin
+
+// Initialize a global flag to track initialization state
+window.lsps1InitComplete = false;
+
 document.addEventListener("DOMContentLoaded", () => {
   const rootElement = document.getElementById('lsps1-root');
 
@@ -27,7 +31,8 @@ document.addEventListener("DOMContentLoaded", () => {
             window.LspApiService.init(props.lspUrl);
             console.log("LspApiService initialized with URL:", props.lspUrl);
           } else {
-            console.warn("Cannot initialize LspApiService: missing URL or service not loaded");
+            // Only log as debug instead of warning for initial load
+            console.debug("LspApiService not initialized: URL will be set when user selects an LSP");
           }
           
           // Get the LSP info
@@ -47,7 +52,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 );
                 console.log("ChannelOrderManager initialized");
               } else {
-                console.warn("Cannot initialize ChannelOrderManager: dependencies not loaded");
+                console.debug("ChannelOrderManager will initialize after user selects an LSP");
               }
             }
           }
@@ -66,6 +71,8 @@ document.addEventListener("DOMContentLoaded", () => {
       const root = ReactDOM.createRoot(rootElement);
       root.render(React.createElement(window.LSPS1App, props));
       
+      // Mark initialization as complete
+      window.lsps1InitComplete = true;
       console.log("LSPS1 app initialized successfully");
     } catch (error) {
       console.error("Error initializing LSPS1 application:", error);

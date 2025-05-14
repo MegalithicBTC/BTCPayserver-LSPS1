@@ -26,7 +26,7 @@ window.LspApiService = {
       
       // Build the order request data following the LSPS1 specification
       const payload = {
-        node_pubkey: nodePublicKey,
+        public_key: nodePublicKey, // Changed from node_pubkey to public_key to match API requirements
         lsp_balance_sat: channelSizeInSats.toString(), // Convert to string for API
         client_balance_sat: "0",
         required_channel_confirmations: 1, // Standard (not zero-conf)
@@ -36,8 +36,10 @@ window.LspApiService = {
         announce_channel: !isPrivateChannel // Public by default unless private is selected
       };
       
-      // Post the order to the LSPS1 create_order endpoint
-      const orderUrl = `${this.lspUrl}api/lsps1/v1/create_order`;
+      // For LSPS1 API, we directly append the endpoint to the base URL which ends with /v1
+      const baseUrl = this.lspUrl.endsWith('/') ? this.lspUrl : this.lspUrl + '/';
+      const orderUrl = `${baseUrl}create_order`;
+      
       console.log("Posting order to:", orderUrl);
       console.log("Order payload:", payload);
       
@@ -148,8 +150,10 @@ window.LspApiService = {
     }
     
     try {
-      // Use the correct LSPS1 get_order endpoint with query parameter
-      const statusUrl = `${this.lspUrl}api/lsps1/v1/get_order?order_id=${orderId}`;
+      // For LSPS1 API, we directly append the endpoint to the base URL which ends with /v1
+      const baseUrl = this.lspUrl.endsWith('/') ? this.lspUrl : this.lspUrl + '/';
+      const statusUrl = `${baseUrl}get_order?order_id=${orderId}`;
+      
       console.log("Checking order status at:", statusUrl);
       
       // Use a timeout for the fetch operation

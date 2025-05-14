@@ -11,7 +11,7 @@ window.ChannelManager = {
 
     this.refreshingChannels = true;
     try {
-      console.log("Refreshing Lightning channels list");
+      console.log(`Refreshing Lightning channels at ${new Date().toLocaleTimeString()}`);
       // Use the correct controller endpoint for refreshing channels
       const response = await fetch(window.location.pathname + '/refresh-channels');
       
@@ -52,6 +52,8 @@ window.ChannelManager = {
     this.channelPollingInterval = setInterval(() => {
       this.refreshChannels();
     }, 5000);
+    
+    console.log("Channel polling started at", new Date().toLocaleTimeString());
   },
   
   // Stop polling for channel updates
@@ -59,6 +61,7 @@ window.ChannelManager = {
     if (this.channelPollingInterval) {
       clearInterval(this.channelPollingInterval);
       this.channelPollingInterval = null;
+      console.log("Channel polling stopped at", new Date().toLocaleTimeString());
     }
   }
 };

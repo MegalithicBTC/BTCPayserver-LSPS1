@@ -2,10 +2,10 @@
 window.ChannelOrderManager = {
   lspInfo: null,
   options: null,
-  pollingInterval: null,
-  orderPollingInterval: null,
   lspUrl: null,
   nodePublicKey: null,
+  orderPollingInterval: null,
+  currentOrderId: null,
   
   init(lspInfo, lspUrl, nodePublicKey) {
     if (!lspInfo) {
@@ -27,16 +27,36 @@ window.ChannelOrderManager = {
     this.lspUrl = lspUrl;
     this.nodePublicKey = nodePublicKey;
     
-    // Process options if LspManager is available
-    if (window.LspManager && typeof window.LspManager.processChannelOptions === 'function') {
-      this.options = window.LspManager.processChannelOptions(lspInfo);
-    } else {
-      console.warn("LspManager not available, cannot process channel options");
-      // Create basic options from lspInfo directly
+    // Process options if LspConfigManager is available
+    if (window.LspConfigManager && typeof window.LspConfigManager.processChannelOptions === 'function') {
+      this.options = window.LspConfigManager.processChannelOptions(lspInfo);
+    } 
+    
+    // If options processing failed or returned null, create our own options object directly from lspInfo
+    if (!this.options) {
+      console.warn("Creating basic channel options from lspInfo directly");
       this.options = {
-        minChannelSizeSat: lspInfo.min_initial_client_balance_sat || "0",
-        maxChannelSizeSat: lspInfo.max_initial_client_balance_sat || "16777215"
+        minChannelSize: parseInt(lspInfo.min_initial_client_balance_sat || lspInfo.min_channel_balance || 100000, 10),
+        maxChannelSize: parseInt(lspInfo.max_initial_client_balance_sat || lspInfo.max_channel_balance || 16777215, 10),
+        defaultChannelSize: parseInt(lspInfo.recommended_channel_balance || 1000000, 10),
+        feeRatePercent: parseFloat(lspInfo.channel_fee_rate ? lspInfo.channel_fee_rate / 1000000 : 0.001),
+        minSats: parseInt(lspInfo.min_initial_client_balance_sat || lspInfo.min_channel_balance || 100000, 10),
+        maxSats: parseInt(lspInfo.max_initial_client_balance_sat || lspInfo.max_channel_balance || 16777215, 10)
       };
+      
+      // Ensure default size is within min/max bounds
+      this.options.defaultChannelSize = Math.min(
+        Math.max(this.options.defaultChannelSize, this.options.minChannelSize), 
+        this.options.maxChannelSize
+      );
+    }
+    
+    // Make sure the options include minSats and maxSats properties that the slider component expects
+    if (this.options && !this.options.minSats) {
+      this.options.minSats = this.options.minChannelSize;
+    }
+    if (this.options && !this.options.maxSats) {
+      this.options.maxSats = this.options.maxChannelSize;
     }
     
     // Initialize the LSP API Service with the LSP URL if available
@@ -80,63 +100,79 @@ window.ChannelOrderManager = {
   
   // Poll for order status directly from the LSP
   startOrderStatusPolling(orderId) {
-    if (!orderId || !this.lspUrl) {
-      console.error("Cannot poll order status - missing required data");
+    if (!orderId) {
+      console.error("Cannot start polling: Order ID is required");
       return false;
     }
     
+    // Store the current order ID for reference
+    this.currentOrderId = orderId;
+    
     // Clear any existing polling interval
-    if (this.orderPollingInterval) {
-      clearInterval(this.orderPollingInterval);
-    }
+    this.stopOrderStatusPolling();
     
-    // Set up polling with a 5-minute timeout
-    const startTime = Date.now();
-    const FIVE_MINUTES = 5 * 60 * 1000;
+    // Do an initial check immediately
+    this.checkOrderStatus(orderId);
     
-    this.orderPollingInterval = setInterval(async () => {
-      try {
-        // Check if 5 minutes have passed - if so, stop polling and show timeout
-        if (Date.now() - startTime > FIVE_MINUTES) {
-          console.log("Order polling timed out after 5 minutes");
-          clearInterval(this.orderPollingInterval);
-          this.orderPollingInterval = null;
-          
-          // Dispatch timeout event
-          const timeoutStatus = {
-            success: false,
-            status: 'timeout',
-            error: 'Order polling timed out after 5 minutes',
-            orderId
-          };
-          
-          // Use the same event name that OrderResult.js is listening for
-          document.dispatchEvent(new CustomEvent('order-status-updated', { detail: timeoutStatus }));
-          return;
-        }
-        
-        if (window.LspApiService && typeof window.LspApiService.getOrderStatus === 'function') {
-          const status = await window.LspApiService.getOrderStatus(orderId);
-          console.log("Order status update:", status);
-          
-          // If we have a complete or failed state, stop polling
-          if (status.status === 'complete' || status.status === 'failed') {
-            clearInterval(this.orderPollingInterval);
-            this.orderPollingInterval = null;
-          }
-          
-          // Dispatch event using the correct event name that OrderResult is listening for
-          document.dispatchEvent(new CustomEvent('order-status-updated', { detail: status }));
-        } else {
-          console.error("LspApiService not available for status polling");
-          clearInterval(this.orderPollingInterval);
-          this.orderPollingInterval = null;
-        }
-      } catch (error) {
-        console.error("Error polling order status:", error);
-      }
+    console.log(`Starting order status polling for orderId: ${orderId}`);
+    this.orderPollingInterval = setInterval(() => {
+      this.checkOrderStatus(orderId);
     }, 5000); // Poll every 5 seconds
     
     return true;
+  },
+  
+  // Stop polling for order status
+  stopOrderStatusPolling() {
+    if (this.orderPollingInterval) {
+      console.log("Stopping order status polling");
+      clearInterval(this.orderPollingInterval);
+      this.orderPollingInterval = null;
+    }
+  },
+  
+  // Check the status of an order
+  async checkOrderStatus(orderId) {
+    if (!orderId) {
+      console.error("Order ID is required for status check");
+      return { success: false, error: "Missing order ID" };
+    }
+    
+    try {
+      console.log(`Checking status for order ${orderId} at ${new Date().toLocaleTimeString()}`);
+      
+      // Try to use LspApiService if available
+      if (window.LspApiService && typeof window.LspApiService.getOrderStatus === 'function') {
+        const status = await window.LspApiService.getOrderStatus(orderId);
+        
+        // Update any OrderResult components via static method
+        if (window.OrderResult && typeof window.OrderResult.updateStatus === 'function') {
+          console.log("Updating OrderResult with status:", status);
+          window.OrderResult.updateStatus(status);
+        } else {
+          console.log("Order status received but OrderResult.updateStatus not available:", status);
+          // Dispatch a custom event as fallback
+          document.dispatchEvent(new CustomEvent('order-status-updated', { detail: status }));
+        }
+        
+        // Automatically stop polling if the order is complete or failed
+        if (status.success && 
+            (status.status === 'complete' || 
+             status.status === 'completed' || 
+             status.status === 'failed')) {
+          console.log(`Order ${orderId} reached final state (${status.status}), stopping polling`);
+          this.stopOrderStatusPolling();
+        }
+        
+        return status;
+      } else {
+        console.error("LspApiService not available for status polling");
+        this.stopOrderStatusPolling();
+        return { success: false, error: "Order status service not available" };
+      }
+    } catch (error) {
+      console.error("Error checking order status:", error);
+      return { success: false, error: error.message || "Unknown error checking order status" };
+    }
   }
 };

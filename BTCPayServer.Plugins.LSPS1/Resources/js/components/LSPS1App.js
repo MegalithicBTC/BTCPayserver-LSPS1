@@ -13,6 +13,22 @@ window.LSPS1App = function(props) {
   const [fetchingLspInfo, setFetchingLspInfo] = React.useState(false);
   const [lspErrorMessage, setLspErrorMessage] = React.useState("");
   
+  // Helper function to process LSP info and store public keys
+  const processLspInfoAndStoreKeys = (lspInfo) => {
+    if (!lspInfo || !lspInfo.uris || !Array.isArray(lspInfo.uris) || lspInfo.uris.length === 0) {
+      console.warn("No valid URIs in LSP info to store");
+      return;
+    }
+    
+    // Use the LspStorageManager to store public keys
+    if (window.LspStorageManager && typeof window.LspStorageManager.storeLspPubKeysFromUris === 'function') {
+      window.LspStorageManager.storeLspPubKeysFromUris(lspInfo.uris);
+      console.log("Stored LSP public keys from URIs:", lspInfo.uris);
+    } else {
+      console.error("LspStorageManager.storeLspPubKeysFromUris not available");
+    }
+  };
+
   // Function to get LSP info and connect to the LSP
   const getLspInfo = async () => {
     try {
@@ -33,6 +49,9 @@ window.LSPS1App = function(props) {
         setUserNodeFailedToConnectToLsp(false);
         setConnectedLspName(props.availableLsps.find(l => l.slug === lspSlug)?.name || "LSP");
         setConnectionMessage(`Connected to ${props.availableLsps.find(l => l.slug === lspSlug)?.name || "LSP"}`);
+        
+        // Process LSP info and store public keys
+        processLspInfoAndStoreKeys(data.lspInfo);
         
         // Make sure we have the lspUrl
         if (!data.lspUrl) {
