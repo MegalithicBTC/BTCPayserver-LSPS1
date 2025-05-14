@@ -90,9 +90,31 @@ window.ChannelOrderManager = {
       clearInterval(this.orderPollingInterval);
     }
     
-    // Set up polling interval
+    // Set up polling with a 5-minute timeout
+    const startTime = Date.now();
+    const FIVE_MINUTES = 5 * 60 * 1000;
+    
     this.orderPollingInterval = setInterval(async () => {
       try {
+        // Check if 5 minutes have passed - if so, stop polling and show timeout
+        if (Date.now() - startTime > FIVE_MINUTES) {
+          console.log("Order polling timed out after 5 minutes");
+          clearInterval(this.orderPollingInterval);
+          this.orderPollingInterval = null;
+          
+          // Dispatch timeout event
+          const timeoutStatus = {
+            success: false,
+            status: 'timeout',
+            error: 'Order polling timed out after 5 minutes',
+            orderId
+          };
+          
+          // Use the same event name that OrderResult.js is listening for
+          document.dispatchEvent(new CustomEvent('order-status-updated', { detail: timeoutStatus }));
+          return;
+        }
+        
         if (window.LspApiService && typeof window.LspApiService.getOrderStatus === 'function') {
           const status = await window.LspApiService.getOrderStatus(orderId);
           console.log("Order status update:", status);
@@ -103,8 +125,8 @@ window.ChannelOrderManager = {
             this.orderPollingInterval = null;
           }
           
-          // Dispatch a custom event with the status for other components to listen to
-          window.dispatchEvent(new CustomEvent('lsps1:order-status-update', { detail: status }));
+          // Dispatch event using the correct event name that OrderResult is listening for
+          document.dispatchEvent(new CustomEvent('order-status-updated', { detail: status }));
         } else {
           console.error("LspApiService not available for status polling");
           clearInterval(this.orderPollingInterval);

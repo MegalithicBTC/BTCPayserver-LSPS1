@@ -1,20 +1,20 @@
 // LSPS1App - Main application component
 window.LSPS1App = function(props) {
-  const [loading, setLoading] = React.useState(false);
+  const [loading, setLoading] = React.useState(false); // Don't start loading until user takes action
   const [userNodeIsConnectedToLsp, setUserNodeIsConnectedToLsp] = React.useState(props.userNodeIsConnectedToLsp);
   const [userNodeFailedToConnectToLsp, setUserNodeFailedToConnectToLsp] = React.useState(props.userNodeFailedToConnectToLsp);
   const [connectionMessage, setConnectionMessage] = React.useState("Your Lightning node is online.");
   const [connectedLspName, setConnectedLspName] = React.useState(props.connectedLspName);
   const [lspInfo, setLspInfo] = React.useState(JSON.parse(props.lspInfoJson || '{}'));
   const [orderResult, setOrderResult] = React.useState(null);
-  const [channelSize, setChannelSize] = React.useState(1000000);
+  const [channelSize, setChannelSize] = React.useState(1000000); // Default to 1,000,000 sats
   const [userChannels, setUserChannels] = React.useState(props.userChannels || []);
   const [showChannelConfig, setShowChannelConfig] = React.useState(false);
   const [fetchingLspInfo, setFetchingLspInfo] = React.useState(false);
   const [lspErrorMessage, setLspErrorMessage] = React.useState("");
   
   // Function to get LSP info and connect to the LSP
-  const getChannel = async () => {
+  const getLspInfo = async () => {
     try {
       setFetchingLspInfo(true);
       setLspErrorMessage("");
@@ -38,7 +38,7 @@ window.LSPS1App = function(props) {
         if (!data.lspUrl) {
           console.error("LSP URL is missing in response");
           setLspErrorMessage("LSP URL is missing. Please try again.");
-          return;
+          return false;
         }
         
         // Store LSP info for later use - Check if services are available first
@@ -73,35 +73,47 @@ window.LSPS1App = function(props) {
             } catch (err) {
               console.error("Error initializing ChannelOrderManager:", err);
               setLspErrorMessage("Error initializing channel order manager. Please refresh and try again.");
-              return;
+              return false;
             }
           } else {
             console.error("ChannelOrderManager.init method is not available");
             setLspErrorMessage("Channel order manager is missing required functionality. Please refresh and try again.");
-            return;
+            return false;
           }
         } else {
           console.error("ChannelOrderManager is not available");
           setLspErrorMessage("Channel order manager is not available. Please refresh and try again.");
-          return;
+          return false;
         }
         
-        // Show the channel configuration
+        // Show the channel configuration with default values
+        setChannelSize(1000000); // Ensure default of 1,000,000 sats
         setShowChannelConfig(true);
+        setLoading(false);
+        return true;
       } else {
         console.error("Failed to get LSP info:", data.error);
         setUserNodeIsConnectedToLsp(false);
         setUserNodeFailedToConnectToLsp(true);
         setLspErrorMessage(data.error || "LSP failure, please try a different LSP.");
+        return false;
       }
     } catch (error) {
       console.error("Error getting LSP info:", error);
       setUserNodeIsConnectedToLsp(false);
       setUserNodeFailedToConnectToLsp(true);
       setLspErrorMessage("Error connecting to LSP. Please try again.");
+      return false;
     } finally {
       setFetchingLspInfo(false);
+      setLoading(false);
     }
+  };
+
+  // For the "Get a Lightning Channel" button
+  const getChannel = () => {
+    setLoading(true);
+    getLspInfo();
   };
 
   // Determine content based on lightning node availability
@@ -122,8 +134,6 @@ window.LSPS1App = function(props) {
     if (!showChannelConfig) {
       return React.createElement(React.Fragment, null,
         React.createElement('div', { className: 'text-center mb-4' },
-          // React.createElement('div', { className: 'alert alert-success' }, connectionMessage),
-          
           React.createElement('button', {
             className: 'btn btn-primary btn-lg',
             onClick: getChannel,
@@ -137,22 +147,25 @@ window.LSPS1App = function(props) {
       );
     }
     
-    // Otherwise show the regular channel configuration components
+    // Otherwise show the channel configuration components
     return React.createElement(React.Fragment, null,
       // Show existing channels if any
       userChannels && userChannels.length > 0 && React.createElement(window.ExistingChannels, {
         channels: userChannels
       }),
       
-      React.createElement(window.ChannelConfiguration, {
+      // Only show the ChannelConfiguration if we don't have an order result yet
+      !orderResult && React.createElement(window.ChannelConfiguration, {
         channelSize: channelSize,
         setChannelSize: setChannelSize,
         lspInfo: lspInfo,
+        lspUrl: props.lspUrl,
         nodePublicKey: props.nodePublicKey,
         xsrfToken: props.xsrfToken,
         setOrderResult: setOrderResult
       }),
       
+      // Show order result (invoice) when available
       orderResult && React.createElement(window.OrderResult, { result: orderResult })
     );
   };

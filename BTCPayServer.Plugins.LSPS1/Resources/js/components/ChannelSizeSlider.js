@@ -1,6 +1,13 @@
 // ChannelSizeSlider component - Allows users to select channel size
 window.ChannelSizeSlider = function(sliderProps) {
-  const { channelSize, setChannelSize, channelOptions } = sliderProps;
+  const { channelSize, setChannelSize, channelOptions, defaultValue = 1000000 } = sliderProps;
+  
+  // Initialize with default value if needed
+  React.useEffect(() => {
+    if (channelSize === 0 && setChannelSize) {
+      setChannelSize(defaultValue);
+    }
+  }, []);
   
   // Calculate min, max values and step size
   const minSats = channelOptions?.minSats || 100000;

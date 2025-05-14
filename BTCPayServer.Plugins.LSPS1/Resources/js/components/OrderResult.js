@@ -37,8 +37,65 @@ window.OrderResult = function(resultProps) {
       return null;
     }
     
-    return React.createElement('div', { className: 'mt-3' },
+    // Generate lightning: URL for the invoice
+    const lightningUrl = `lightning:${result.data.invoice}`;
+    
+    return React.createElement('div', { className: 'mt-3 text-center' },
       React.createElement('h5', null, 'Pay this invoice to create your channel'),
+      
+      // QR code container with clipboard functionality
+      React.createElement('div', { 
+        className: 'qr-container mb-3', 
+        style: { 
+          position: 'relative',
+          display: 'inline-block',
+          cursor: 'pointer'
+        }
+      },
+        React.createElement('img', {
+          src: `https://chart.googleapis.com/chart?chs=300x300&cht=qr&chl=${encodeURIComponent(lightningUrl)}`,
+          alt: 'Invoice QR Code',
+          width: 300,
+          height: 300,
+          style: {
+            border: '1px solid #ccc',
+            borderRadius: '4px'
+          }
+        }),
+        React.createElement('img', {
+          src: '/Resources/img/lightning-bolt.svg',
+          alt: 'Lightning',
+          style: {
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: '60px',
+            height: '60px',
+            padding: '10px',
+            background: 'white',
+            borderRadius: '50%',
+            boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
+          }
+        }),
+        // Overlay for copy click functionality
+        React.createElement('div', {
+          style: {
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            cursor: 'pointer'
+          },
+          onClick: () => {
+            navigator.clipboard.writeText(result.data.invoice);
+            alert('Invoice copied to clipboard!');
+          }
+        })
+      ),
+      
+      // Text input for the invoice with copy button
       React.createElement('div', { className: 'input-group mb-3' },
         React.createElement('input', {
           type: 'text',
@@ -55,14 +112,14 @@ window.OrderResult = function(resultProps) {
           }
         }, 'Copy')
       ),
-      React.createElement('div', { className: 'text-center mb-3' },
-        React.createElement('img', {
-          src: `https://chart.googleapis.com/chart?chs=250x250&cht=qr&chl=${encodeURIComponent(result.data.invoice)}`,
-          alt: 'Invoice QR Code',
-          width: 250,
-          height: 250
-        })
-      )
+      
+      // Open in wallet button
+      React.createElement('a', {
+        href: lightningUrl,
+        className: 'btn btn-primary mb-3',
+        target: '_blank',
+        rel: 'noopener noreferrer'
+      }, 'Open in Lightning Wallet')
     );
   };
   
@@ -90,29 +147,15 @@ window.OrderResult = function(resultProps) {
     );
   };
   
-  // Show raw JSON of order data
+  // Show raw JSON of order data (only in debug mode or for developers)
   const renderRawJson = () => {
     const dataToShow = result.success ? result.data : result.error;
     
     return React.createElement('div', { className: 'mt-3' },
       React.createElement('details', null,
-        React.createElement('summary', { className: 'text-muted small' }, 'Show Raw Order Data'),
+        React.createElement('summary', { className: 'text-muted small' }, 'Technical Details'),
         React.createElement('pre', { className: 'mt-2 p-2 bg-light border rounded small' },
           JSON.stringify(result.success ? result.data : { error: result.error }, null, 2)
-        )
-      )
-    );
-  };
-  
-  // Show raw JSON of status data
-  const renderStatusJson = () => {
-    if (!statusData) return null;
-    
-    return React.createElement('div', { className: 'mt-3' },
-      React.createElement('details', null,
-        React.createElement('summary', { className: 'text-muted small' }, 'Show Raw Status Data'),
-        React.createElement('pre', { className: 'mt-2 p-2 bg-light border rounded small' },
-          JSON.stringify(statusData, null, 2)
         )
       )
     );
@@ -126,7 +169,6 @@ window.OrderResult = function(resultProps) {
     ),
     renderInvoice(),
     renderStatus(),
-    renderRawJson(),
-    statusData && renderStatusJson()
+    renderRawJson()
   );
 };

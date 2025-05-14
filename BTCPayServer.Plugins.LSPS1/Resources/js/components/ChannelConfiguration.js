@@ -22,24 +22,24 @@ window.ChannelConfiguration = function(configProps) {
     }
   }, [lspInfo, lspUrl, nodePublicKey]);
   
-  // State for private channel toggle
-  const [isPrivateChannel, setIsPrivateChannel] = React.useState(false);
-  const [isCreatingOrder, setIsCreatingOrder] = React.useState(false);
+  // State for private/public channel toggle
+  const [isPublicChannel, setIsPublicChannel] = React.useState(false);
+  const [isGettingPrice, setIsGettingPrice] = React.useState(false);
   
-  // Handle create channel button click
-  const handleCreateChannel = async () => {
+  // Handle get price button click
+  const handleGetPrice = async () => {
     if (!channelSize || !nodePublicKey) {
-      console.error("Missing required data for channel creation");
+      console.error("Missing required data for getting price");
       return;
     }
     
-    setIsCreatingOrder(true);
+    setIsGettingPrice(true);
     try {
       // Call the channel order manager to create an order directly with the LSP
-      const result = await window.ChannelOrderManager.createOrder(channelSize, isPrivateChannel);
+      const result = await window.ChannelOrderManager.createOrder(channelSize, !isPublicChannel);
       setOrderResult(result);
     } finally {
-      setIsCreatingOrder(false);
+      setIsGettingPrice(false);
     }
   };
   
@@ -49,23 +49,24 @@ window.ChannelConfiguration = function(configProps) {
       channelOptions && React.createElement(window.ChannelSizeSlider, {
         channelSize,
         setChannelSize,
-        channelOptions
+        channelOptions,
+        defaultValue: 1000000
       }),
       
-      React.createElement('div', { className: 'form-check form-switch mb-3' },
+      React.createElement('div', { className: 'form-check mb-3 mt-3' },
         React.createElement('input', {
           className: 'form-check-input',
           type: 'checkbox',
-          id: 'privateChannelSwitch',
-          checked: isPrivateChannel,
-          onChange: (e) => setIsPrivateChannel(e.target.checked)
+          id: 'publicChannelSwitch',
+          checked: isPublicChannel,
+          onChange: (e) => setIsPublicChannel(e.target.checked)
         }),
         React.createElement('label', { 
           className: 'form-check-label', 
-          htmlFor: 'privateChannelSwitch' 
-        }, 'Create Private Channel'),
+          htmlFor: 'publicChannelSwitch' 
+        }, 'Public Channel'),
         React.createElement('div', { className: 'form-text text-muted small' },
-          'Public channels (default) are visible to the network. Private channels are only known to you and the LSP.'
+          'Public channels are visible to the network. Private channels (default) are only known to you and the LSP.'
         )
       ),
       
@@ -76,15 +77,15 @@ window.ChannelConfiguration = function(configProps) {
       React.createElement('button', { 
         className: 'btn btn-primary', 
         type: 'button',
-        onClick: handleCreateChannel,
-        disabled: isCreatingOrder
+        onClick: handleGetPrice,
+        disabled: isGettingPrice
       }, 
-        isCreatingOrder ? 
+        isGettingPrice ? 
           React.createElement(React.Fragment, null, 
             React.createElement('span', { className: 'spinner-border spinner-border-sm me-2' }),
-            'Creating Channel...'
+            'Getting Price...'
           ) : 
-          'Create Channel'
+          'Get Price'
       )
     )
   );
