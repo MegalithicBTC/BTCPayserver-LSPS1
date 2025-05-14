@@ -46,13 +46,44 @@ window.OrderResultStatus = {
       
       // Show channel details if available
       if (statusData.channelInfo && statusData.channelInfo.fundingOutpoint) {
-        statusDetails = React.createElement('div', { className: 'mt-2' },
-          React.createElement('p', { className: 'mb-0' }, `Channel funding transaction: ${statusData.channelInfo.fundingOutpoint}`)
+        const txid = statusData.channelInfo.fundingOutpoint.split(':')[0];
+        const vout = statusData.channelInfo.fundingOutpoint.split(':')[1] || '0';
+        
+        // Determine if we're on mainnet or testnet based on URL or configuration
+        const isMainnet = window.LSPS1App?.props?.lspUrl?.includes('megalithic.me') || 
+                         !window.LSPS1App?.props?.lspUrl?.includes('mutiny');
+        
+        // Create mempool.space URL for the transaction
+        const mempoolBaseUrl = isMainnet 
+          ? 'https://mempool.space' 
+          : 'https://mutinynet.mempool.space';
+        
+        const mempoolUrl = `${mempoolBaseUrl}/tx/${txid}#vout=${vout}`;
+        
+        statusDetails = React.createElement('div', { className: 'mt-3' },
+          React.createElement('p', { className: 'mb-2' }, 
+            'Your channel funding transaction has been broadcast to the network!'
+          ),
+          React.createElement('div', { className: 'd-grid gap-2 mb-3' },
+            React.createElement('a', { 
+              className: 'btn btn-primary', 
+              href: mempoolUrl,
+              target: '_blank',
+              rel: 'noopener noreferrer'
+            }, 'See on mempool.space')
+          ),
+          React.createElement('div', { 
+            className: 'alert alert-info mb-0',
+            role: 'alert'
+          }, 
+            React.createElement('i', { className: 'bi bi-info-circle me-2' }),
+            'Please expect your channel will be open and usable when 3 to 6 blocks have passed.'
+          )
         );
       }
 
-      // Show raw channel data from polling
-      if (statusData.channelData && statusData.channelData.length > 0) {
+      // Show raw channel data from polling if there's no fundingOutpoint
+      else if (statusData.channelData && statusData.channelData.length > 0) {
         statusDetails = React.createElement('div', { className: 'mt-3' },
           React.createElement('h6', null, 'Channel Details:'),
           React.createElement('pre', { 
