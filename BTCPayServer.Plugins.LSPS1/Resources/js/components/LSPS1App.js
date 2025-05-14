@@ -1,15 +1,11 @@
-// LSPS1App - Main application component
+// LSPS1App - Main application component without channel management functionality
 window.LSPS1App = function(props) {
-  const [loading, setLoading] = React.useState(false); // Don't start loading until user takes action
+  const [loading, setLoading] = React.useState(false);
   const [userNodeIsConnectedToLsp, setUserNodeIsConnectedToLsp] = React.useState(props.userNodeIsConnectedToLsp);
   const [userNodeFailedToConnectToLsp, setUserNodeFailedToConnectToLsp] = React.useState(props.userNodeFailedToConnectToLsp);
   const [connectionMessage, setConnectionMessage] = React.useState("Your Lightning node is online.");
   const [connectedLspName, setConnectedLspName] = React.useState(props.connectedLspName);
-  const [lspInfo, setLspInfo] = React.useState(JSON.parse(props.lspInfoJson || '{}'));
-  const [orderResult, setOrderResult] = React.useState(null);
-  const [channelSize, setChannelSize] = React.useState(1000000); // Default to 1,000,000 sats
-  const [userChannels, setUserChannels] = React.useState(props.userChannels || []);
-  const [showChannelConfig, setShowChannelConfig] = React.useState(false);
+  const [lspInfo, setLspInfo] = React.useState(props.lspInfo || {});
   const [fetchingLspInfo, setFetchingLspInfo] = React.useState(false);
   const [lspErrorMessage, setLspErrorMessage] = React.useState("");
   
@@ -20,7 +16,7 @@ window.LSPS1App = function(props) {
       return;
     }
     
-    // Use the LspStorageManager to store public keys
+    // Use the LspStorageManager to store public keys if available
     if (window.LspStorageManager && typeof window.LspStorageManager.storeLspPubKeysFromUris === 'function') {
       window.LspStorageManager.storeLspPubKeysFromUris(lspInfo.uris);
       console.log("Stored LSP public keys from URIs:", lspInfo.uris);
@@ -83,31 +79,6 @@ window.LSPS1App = function(props) {
           console.error("LspManager is not available");
         }
         
-        // Only initialize ChannelOrderManager if it exists and has an init method
-        if (window.ChannelOrderManager) {
-          if (typeof window.ChannelOrderManager.init === 'function') {
-            try {
-              window.ChannelOrderManager.init(data.lspInfo, data.lspUrl, props.nodePublicKey);
-              console.log("ChannelOrderManager initialized successfully");
-            } catch (err) {
-              console.error("Error initializing ChannelOrderManager:", err);
-              setLspErrorMessage("Error initializing channel order manager. Please refresh and try again.");
-              return false;
-            }
-          } else {
-            console.error("ChannelOrderManager.init method is not available");
-            setLspErrorMessage("Channel order manager is missing required functionality. Please refresh and try again.");
-            return false;
-          }
-        } else {
-          console.error("ChannelOrderManager is not available");
-          setLspErrorMessage("Channel order manager is not available. Please refresh and try again.");
-          return false;
-        }
-        
-        // Show the channel configuration with default values
-        setChannelSize(1000000); // Ensure default of 1,000,000 sats
-        setShowChannelConfig(true);
         setLoading(false);
         return true;
       } else {
@@ -129,15 +100,15 @@ window.LSPS1App = function(props) {
     }
   };
 
-  // For the "Get a Lightning Channel" button
-  const getChannel = () => {
+  // For the "Connect to LSP" button
+  const connectToLsp = () => {
     setLoading(true);
     getLspInfo();
   };
 
   // Determine content based on lightning node availability
   const renderContent = () => {
-    // If user has no lightning node connected, show setup instructions and an error
+    // If user has no lightning node connected, show setup instructions
     if (!props.userHasLightningNode) {
       return React.createElement(React.Fragment, null,
         React.createElement('div', { className: 'alert alert-warning' },
@@ -149,43 +120,27 @@ window.LSPS1App = function(props) {
       );
     }
     
-    // If user's node is online but we haven't shown the channel config yet
-    if (!showChannelConfig) {
-      return React.createElement(React.Fragment, null,
-        React.createElement('div', { className: 'text-center mb-4' },
-          React.createElement('button', {
-            className: 'btn btn-primary btn-lg',
-            onClick: getChannel,
-            disabled: fetchingLspInfo
-          }, fetchingLspInfo ? 'Connecting...' : 'Get a Lightning Channel'),
-          
-          lspErrorMessage && React.createElement('div', {
-            className: 'alert alert-danger mt-3'
-          }, lspErrorMessage)
-        )
-      );
-    }
-    
-    // Otherwise show the channel configuration components
+    // Show LSP connection button
     return React.createElement(React.Fragment, null,
-      // Show existing channels if any
-      userChannels && userChannels.length > 0 && React.createElement(window.ExistingChannels, {
-        channels: userChannels
-      }),
+      React.createElement('div', { className: 'text-center mb-4' },
+        React.createElement('button', {
+          className: 'btn btn-primary btn-lg',
+          onClick: connectToLsp,
+          disabled: fetchingLspInfo
+        }, fetchingLspInfo ? 'Connecting...' : 'Connect to Lightning Service Provider'),
+        
+        lspErrorMessage && React.createElement('div', {
+          className: 'alert alert-danger mt-3'
+        }, lspErrorMessage)
+      ),
       
-      // Only show the ChannelConfiguration if we don't have an order result yet
-      !orderResult && React.createElement(window.ChannelConfiguration, {
-        channelSize: channelSize,
-        setChannelSize: setChannelSize,
-        lspInfo: lspInfo,
-        lspUrl: props.lspUrl,
-        nodePublicKey: props.nodePublicKey,
-        xsrfToken: props.xsrfToken,
-        setOrderResult: setOrderResult
-      }),
-      
-      // Show order result (invoice) when available
-      orderResult && React.createElement(window.OrderResult, { result: orderResult })
+      userNodeIsConnectedToLsp && React.createElement('div', { className: 'alert alert-info mt-4' },
+        React.createElement('strong', null, connectionMessage),
+        React.createElement('p', { className: 'mt-2' }, 
+          "Your node public key: ",
+          React.createElement('code', null, props.nodePublicKey)
+        )
+      )
     );
   };
   
@@ -194,10 +149,9 @@ window.LSPS1App = function(props) {
       React.createElement(window.LoadingSpinner) : 
       renderContent(),
     
-    // Only show connection footer if a lightning node is configured and we're showing channel config
-    props.userHasLightningNode && showChannelConfig && React.createElement(window.ConnectionFooter, {
+    // Show connection footer if node is connected to LSP
+    props.userHasLightningNode && userNodeIsConnectedToLsp && React.createElement(window.ConnectionFooter, {
       userNodeIsConnectedToLsp: userNodeIsConnectedToLsp,
-      userNodeFailedToConnectToLsp: userNodeFailedToConnectToLsp,
       connectedLspName: connectedLspName,
       availableLsps: props.availableLsps,
       storeId: props.storeId

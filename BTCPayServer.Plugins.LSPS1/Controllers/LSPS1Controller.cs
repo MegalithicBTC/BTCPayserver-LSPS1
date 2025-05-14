@@ -53,17 +53,6 @@ namespace BTCPayServer.Plugins.LSPS1.Controllers
             bool userNodeFailedToConnectToLsp = false;
             LspProvider? connectedLsp = null;
             LSPS1GetInfoResponse? lspInfo = null;
-            IEnumerable<Dictionary<string, object>> channels = Array.Empty<Dictionary<string, object>>();
-            
-            // Only get channels if user has a Lightning node
-            if (userHasLightningNode)
-            {
-                // Get the user's current channels
-                var lightningChannels = await _lightningNodeService.GetLightningChannels(store);
-                channels = ConvertChannelsToClientFormat(lightningChannels);
-                
-                // Don't automatically connect to LSP on page load, wait for user to click "Get a Lightning Channel"
-            }
             
             var vm = new PluginPageViewModel
             {
@@ -90,7 +79,6 @@ namespace BTCPayServer.Plugins.LSPS1.Controllers
                 lspUrl = connectedLsp?.Url ?? string.Empty, // Add direct LSP URL for client-side API calls
                 nodePublicKey = vm.NodePublicKey,
                 userHasLightningNode = vm.UserHasLightningNode,
-                userChannels = channels,
                 availableLsps = vm.AvailableLsps.Select(lsp => new 
                 {
                     slug = lsp.Slug,
@@ -108,31 +96,6 @@ namespace BTCPayServer.Plugins.LSPS1.Controllers
             });
             
             return View(vm);
-        }
-        
-        [HttpGet("refresh-channels")]
-        public async Task<IActionResult> RefreshChannels(string storeId)
-        {
-            try
-            {
-                _logger.LogInformation("Refreshing channels for store {StoreId}", storeId);
-                
-                // Get store
-                var store = await _lightningNodeService.GetStore(storeId);
-                if (store == null)
-                    return Json(new { success = false, error = "Store not found" });
-                
-                // Get channels
-                var lightningChannels = await _lightningNodeService.GetLightningChannels(store);
-                var channels = ConvertChannelsToClientFormat(lightningChannels);
-                
-                return Json(new { success = true, channels });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error refreshing channels for store {StoreId}: {Error}", storeId, ex.Message);
-                return Json(new { success = false, error = ex.Message });
-            }
         }
         
         [HttpGet("get-lsp-info")]
@@ -161,33 +124,6 @@ namespace BTCPayServer.Plugins.LSPS1.Controllers
                 _logger.LogError(ex, "Error getting LSP info for store {StoreId}: {Error}", storeId, ex.Message);
                 return Json(new { success = false, error = ex.Message });
             }
-        }
-        
-        // Helper method to convert Lightning channels to a client-friendly format
-        private IEnumerable<Dictionary<string, object>> ConvertChannelsToClientFormat(IEnumerable<BTCPayServer.Lightning.LightningChannel> channels)
-        {
-            return channels.Select(c => {
-                // Extract what we can safely
-                var response = new Dictionary<string, object>
-                {
-                    ["remotePubKey"] = c.RemoteNode?.ToString() ?? "",
-                    ["capacity"] = c.Capacity.MilliSatoshi / 1000, // Convert msat to sat
-                    ["localBalance"] = c.LocalBalance != null ? c.LocalBalance.MilliSatoshi / 1000 : 0, // Convert msat to sat
-                    ["active"] = c.IsActive,
-                    ["public"] = c.IsPublic
-                };
-                
-                // Try to add channel identifiers safely
-                try {
-                    // Different implementations might use different property names
-                    response["channelId"] = c.ToString() ?? "unknown";
-                }
-                catch {
-                    response["channelId"] = "unknown";
-                }
-                
-                return response;
-            }).ToList();
         }
         
         public class PluginPageViewModel

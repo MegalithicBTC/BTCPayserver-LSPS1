@@ -56,41 +56,6 @@ namespace BTCPayServer.Plugins.LSPS1.Controllers
             var success = await _lightningNodeService.ConnectToNode(store, request.NodeUri);
             return Ok(new { success });
         }
-        
-        [HttpGet("channels")]
-        public async Task<IActionResult> GetChannelsApi(string storeId)
-        {
-            var store = await _lightningNodeService.GetStore(storeId);
-            if (store == null)
-                return NotFound("Store not found");
-                
-            var channels = await _lightningNodeService.GetLightningChannels(store);
-            
-            // Convert to simpler response model for API consumption
-            var channelsResponse = channels.Select(c => {
-                // Extract what we can safely
-                var response = new Dictionary<string, object>
-                {
-                    ["remotePubKey"] = c.RemoteNode?.ToString() ?? "",
-                    ["capacity"] = c.Capacity.MilliSatoshi,
-                    ["localBalance"] = c.LocalBalance?.MilliSatoshi ?? 0,
-                    ["active"] = c.IsActive,
-                    ["isPublic"] = c.IsPublic
-                };
-                
-                // Try to add channel identifiers safely
-                try {
-                    response["channelId"] = c.ToString() ?? "unknown";
-                }
-                catch {
-                    response["channelId"] = "unknown";
-                }
-                
-                return response;
-            });
-            
-            return Ok(channelsResponse);
-        }
 
         public class ConnectNodeRequest
         {
