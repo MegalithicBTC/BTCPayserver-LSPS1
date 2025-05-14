@@ -14,12 +14,33 @@ window.OrderResultStatus = {
     let statusDetails = null;
     let invoiceElement = null;
     
-    // Check if order is completed to show different UI
+    // Check order states
     const isCompleted = statusData.order_state === "COMPLETED" || 
                        statusData.status === "complete" || 
                        statusData.status === "completed";
+                       
+    const isFailed = statusData.order_state === "FAILED" ||
+                    statusData.status === "failed";
 
-    if (isCompleted) {
+    if (isFailed) {
+      statusMessage = 'Channel Opening Failed';
+      statusClass = 'text-danger';
+      
+      statusDetails = React.createElement('div', { className: 'mt-3' },
+        React.createElement('pre', { 
+          className: 'bg-light p-3 rounded small',
+          style: { maxHeight: '400px', overflow: 'auto' }
+        }, 
+          JSON.stringify(statusData, null, 2)
+        ),
+        React.createElement('div', { className: 'mt-3 text-center' },
+          React.createElement('button', {
+            className: 'btn btn-primary',
+            onClick: () => window.location.reload()
+          }, 'Try Again')
+        )
+      );
+    } else if (isCompleted) {
       statusMessage = 'Your channel is opening!';
       statusClass = 'text-success';
       
@@ -111,8 +132,9 @@ window.OrderResultStatus = {
       } else {
         console.warn("No invoice found in status data:", statusData);
       }
-    } else if (statusData.status === 'payment_received') {
-      statusMessage = 'Payment received, waiting for channel creation...';
+    } else if (statusData.status === 'payment_received' || 
+              (statusData.payment?.bolt11?.state === 'HOLD')) {
+      statusMessage = 'Payment received, channel opening in progress...';
       statusClass = 'text-info';
     }
     
@@ -122,7 +144,7 @@ window.OrderResultStatus = {
           React.createElement('h5', null, 'Order Status:'),
           React.createElement('p', { className: statusDetails ? 'mb-2' : 'mb-0' }, statusMessage)
         ),
-        React.createElement('button', {
+        !isFailed && React.createElement('button', {
           className: 'btn btn-sm btn-outline-secondary',
           onClick: () => {
             const detailsSection = document.getElementById('technical-details');
@@ -133,9 +155,9 @@ window.OrderResultStatus = {
         }, 'Technical Details')
       ),
       statusDetails,
-      // Only show invoice if not completed
-      !isCompleted && invoiceElement,
-      React.createElement('div', { 
+      // Only show invoice if not completed and not failed
+      !isCompleted && !isFailed && invoiceElement,
+      !isFailed && React.createElement('div', { 
         id: 'technical-details',
         className: 'mt-3',
         style: { display: 'none' }
@@ -150,7 +172,7 @@ window.OrderResultStatus = {
           }, null, 2)
         )
       ),
-      React.createElement('p', { className: 'mt-2 text-muted small' },
+      !isFailed && React.createElement('p', { className: 'mt-2 text-muted small' },
         `Last status check: ${lastPolled.toLocaleTimeString()}`
       )
     );

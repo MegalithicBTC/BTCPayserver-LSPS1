@@ -60,6 +60,11 @@ window.OrderResult = function(resultProps) {
   
   // Determine appropriate alert class based on result and status
   const alertClass = React.useMemo(() => {
+    // Check if order has failed
+    const isFailed = currentStatusData?.order_state === "FAILED" || 
+                    currentStatusData?.status === "failed";
+    if (isFailed) return 'alert-danger';
+    
     if (!result.success) return 'alert-danger';
     
     // Check if order is completed
@@ -68,20 +73,41 @@ window.OrderResult = function(resultProps) {
                        currentStatusData?.status === "completed";
                        
     if (isCompleted) return 'alert-success';
-    if (currentStatusData?.status === 'failed') return 'alert-danger';
     if (currentStatusData?.status === 'waiting_for_payment') return 'alert-warning';
     return 'alert-info';
   }, [result.success, currentStatusData]);
   
+  // Determine the heading and message based on status
+  const { heading, message } = React.useMemo(() => {
+    const isFailed = currentStatusData?.order_state === "FAILED" || 
+                    currentStatusData?.status === "failed";
+                    
+    if (isFailed) {
+      const orderId = currentStatusData?.orderId || currentStatusData?.details?.order_id;
+      return {
+        heading: 'Channel Opening Failed',
+        message: `The channel order failed to complete. To troubleshoot, please contact ${window.LSPS1App?.props?.connectedLspName || "the LSP"} and inquire about order ID ${orderId}.`
+      };
+    }
+    
+    if (!result.success) {
+      return {
+        heading: 'Error',
+        message: result.message || 'Failed to create order.'
+      };
+    }
+    
+    return {
+      heading: 'Success!',
+      message: result.message || 'Order created successfully.'
+    };
+  }, [result, currentStatusData]);
+  
   return React.createElement('div', { className: `alert ${alertClass}` },
     React.createElement('div', { className: 'd-flex justify-content-between align-items-start' },
       React.createElement('div', null,
-        React.createElement('h5', { className: 'alert-heading' }, 
-          result.success ? 'Success!' : 'Error'
-        ),
-        React.createElement('p', { className: 'mb-0' }, 
-          result.message || (result.success ? 'Order created successfully.' : 'Failed to create order.')
-        )
+        React.createElement('h5', { className: 'alert-heading' }, heading),
+        React.createElement('p', { className: 'mb-0' }, message)
       )
     ),
     
