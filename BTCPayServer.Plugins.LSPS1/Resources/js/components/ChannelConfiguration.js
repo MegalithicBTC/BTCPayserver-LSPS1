@@ -8,7 +8,17 @@ window.ChannelConfiguration = function(configProps) {
   // Initialize channel order manager if needed
   React.useEffect(() => {
     if (lspInfo && lspUrl && nodePublicKey) {
-      window.ChannelOrderManager.init(lspInfo, lspUrl, nodePublicKey);
+      console.log("Initializing ChannelOrderManager with:", { 
+        lspInfo: lspInfo, 
+        lspUrl: lspUrl, 
+        nodePublicKey: nodePublicKey 
+      });
+      
+      if (typeof window.ChannelOrderManager.init === 'function') {
+        window.ChannelOrderManager.init(lspInfo, lspUrl, nodePublicKey);
+      } else {
+        console.error("ChannelOrderManager.init is not available");
+      }
     }
   }, [lspInfo, lspUrl, nodePublicKey]);
   

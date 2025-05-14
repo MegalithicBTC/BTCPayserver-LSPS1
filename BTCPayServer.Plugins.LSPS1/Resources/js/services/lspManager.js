@@ -35,6 +35,21 @@ window.LspManager = {
     return {};
   },
   
+  // Store LSP info in localStorage
+  storeLspInfo(lspInfo) {
+    if (lspInfo && Object.keys(lspInfo).length > 0) {
+      console.log("Storing LSP info in localStorage");
+      localStorage.setItem('lsps1_lsp_info', JSON.stringify(lspInfo));
+      this.lspInfo = lspInfo;
+      
+      // Also store in hidden input if it exists
+      const lspInfoElement = document.getElementById('lsp-info-data');
+      if (lspInfoElement) {
+        lspInfoElement.value = JSON.stringify(lspInfo);
+      }
+    }
+  },
+  
   // Process channel options
   processChannelOptions(lspInfo) {
     if (!lspInfo || !lspInfo.options) return null;

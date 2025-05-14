@@ -1,86 +1,140 @@
 // LSPS1App - Main application component
 window.LSPS1App = function(props) {
-  const [loading, setLoading] = React.useState(true);
+  const [loading, setLoading] = React.useState(false);
   const [userNodeIsConnectedToLsp, setUserNodeIsConnectedToLsp] = React.useState(props.userNodeIsConnectedToLsp);
   const [userNodeFailedToConnectToLsp, setUserNodeFailedToConnectToLsp] = React.useState(props.userNodeFailedToConnectToLsp);
-  const [connectionMessage, setConnectionMessage] = React.useState(""); // Calculated in UI based on connection status
+  const [connectionMessage, setConnectionMessage] = React.useState("Your Lightning node is online.");
   const [connectedLspName, setConnectedLspName] = React.useState(props.connectedLspName);
   const [lspInfo, setLspInfo] = React.useState(JSON.parse(props.lspInfoJson || '{}'));
   const [orderResult, setOrderResult] = React.useState(null);
   const [channelSize, setChannelSize] = React.useState(1000000);
   const [userChannels, setUserChannels] = React.useState(props.userChannels || []);
+  const [showChannelConfig, setShowChannelConfig] = React.useState(false);
+  const [fetchingLspInfo, setFetchingLspInfo] = React.useState(false);
+  const [lspErrorMessage, setLspErrorMessage] = React.useState("");
   
-  React.useEffect(() => {
-    console.log("Initializing LSPS1 App");
-    
-    // Set connection message based on status
-    if (userNodeIsConnectedToLsp && connectedLspName) {
-      setConnectionMessage(`Connected to ${connectedLspName}`);
-    } else if (userNodeFailedToConnectToLsp) {
-      setConnectionMessage(`Failed to connect to Lightning Service Provider`);
-    } else {
-      setConnectionMessage('Not connected to any Lightning Service Provider');
-    }
-    
-    const initialize = async () => {
-      try {
-        // If user has no Lightning node, don't attempt to load LSP info
-        if (!props.userHasLightningNode) {
-          console.log("No Lightning node configured, skipping LSP connection");
-          setLoading(false);
+  // Function to get LSP info and connect to the LSP
+  const getChannel = async () => {
+    try {
+      setFetchingLspInfo(true);
+      setLspErrorMessage("");
+      
+      // Default to Megalith LSP if none selected
+      const lspSlug = props.selectedLspSlug || 'megalith-lsp';
+      
+      console.log(`Getting LSP info for ${lspSlug}`);
+      const response = await fetch(`/stores/${props.storeId}/plugins/lsps1/get-lsp-info?lspSlug=${lspSlug}`);
+      const data = await response.json();
+      
+      if (data.success && data.lspInfo) {
+        console.log("Successfully retrieved LSP info:", data.lspInfo);
+        setLspInfo(data.lspInfo);
+        setUserNodeIsConnectedToLsp(true);
+        setUserNodeFailedToConnectToLsp(false);
+        setConnectedLspName(props.availableLsps.find(l => l.slug === lspSlug)?.name || "LSP");
+        setConnectionMessage(`Connected to ${props.availableLsps.find(l => l.slug === lspSlug)?.name || "LSP"}`);
+        
+        // Make sure we have the lspUrl
+        if (!data.lspUrl) {
+          console.error("LSP URL is missing in response");
+          setLspErrorMessage("LSP URL is missing. Please try again.");
           return;
         }
         
-        // If we already have LSP info loaded, we can skip fetching it
-        if (lspInfo && Object.keys(lspInfo).length > 0) {
-          console.log("LSP info already loaded");
-          setLoading(false);
-          return;
-        }
-        
-        // Display channels information
-        if (userChannels && userChannels.length > 0) {
-          console.log(`User has ${userChannels.length} active Lightning channels`);
+        // Store LSP info for later use - Check if services are available first
+        if (window.LspApiService) {
+          if (typeof window.LspApiService.init === 'function') {
+            window.LspApiService.init(data.lspUrl);
+            console.log("LspApiService initialized with URL:", data.lspUrl);
+          } else {
+            console.error("LspApiService.init method is not available");
+          }
         } else {
-          console.log("User has no active Lightning channels");
+          console.error("LspApiService is not available");
         }
         
-        // Attempt to load LSP info
-        let attempts = 0;
-        const checkInterval = setInterval(() => {
-          const updatedInfo = window.LspManager.loadLspInfo();
-          if (updatedInfo && Object.keys(updatedInfo).length > 0) {
-            console.log("LSP info loaded, showing UI");
-            setLspInfo(updatedInfo);
-            setLoading(false);
-            clearInterval(checkInterval);
-            window.ChannelOrderManager.init(updatedInfo);
+        if (window.LspManager) {
+          if (typeof window.LspManager.storeLspInfo === 'function') {
+            window.LspManager.storeLspInfo(data.lspInfo);
+            console.log("LSP info stored in LspManager");
+          } else {
+            console.error("LspManager.storeLspInfo method is not available");
           }
-          
-          attempts++;
-          if (attempts > 20) {
-            console.log("Loading timeout reached, showing UI regardless");
-            setLoading(false);
-            clearInterval(checkInterval);
+        } else {
+          console.error("LspManager is not available");
+        }
+        
+        // Only initialize ChannelOrderManager if it exists and has an init method
+        if (window.ChannelOrderManager) {
+          if (typeof window.ChannelOrderManager.init === 'function') {
+            try {
+              window.ChannelOrderManager.init(data.lspInfo, data.lspUrl, props.nodePublicKey);
+              console.log("ChannelOrderManager initialized successfully");
+            } catch (err) {
+              console.error("Error initializing ChannelOrderManager:", err);
+              setLspErrorMessage("Error initializing channel order manager. Please refresh and try again.");
+              return;
+            }
+          } else {
+            console.error("ChannelOrderManager.init method is not available");
+            setLspErrorMessage("Channel order manager is missing required functionality. Please refresh and try again.");
+            return;
           }
-        }, 500);
-      } catch (error) {
-        console.error("Error initializing app:", error);
-        setLoading(false);
+        } else {
+          console.error("ChannelOrderManager is not available");
+          setLspErrorMessage("Channel order manager is not available. Please refresh and try again.");
+          return;
+        }
+        
+        // Show the channel configuration
+        setShowChannelConfig(true);
+      } else {
+        console.error("Failed to get LSP info:", data.error);
+        setUserNodeIsConnectedToLsp(false);
+        setUserNodeFailedToConnectToLsp(true);
+        setLspErrorMessage(data.error || "LSP failure, please try a different LSP.");
       }
-    };
-    
-    initialize();
-  }, []);
-  
+    } catch (error) {
+      console.error("Error getting LSP info:", error);
+      setUserNodeIsConnectedToLsp(false);
+      setUserNodeFailedToConnectToLsp(true);
+      setLspErrorMessage("Error connecting to LSP. Please try again.");
+    } finally {
+      setFetchingLspInfo(false);
+    }
+  };
+
   // Determine content based on lightning node availability
   const renderContent = () => {
-    // If user has no lightning node connected, show setup instructions
+    // If user has no lightning node connected, show setup instructions and an error
     if (!props.userHasLightningNode) {
-      return React.createElement(window.LightningNodeSetup, {
-        storeId: props.storeId,
-        lightningSetupUrl: `/stores/${props.storeId}/lightning/BTC/setup` // Generate URL from storeId
-      });
+      return React.createElement(React.Fragment, null,
+        React.createElement('div', { className: 'alert alert-warning' },
+          "Could not get your node's public key, please check your Lightning configuration"),
+        React.createElement(window.LightningNodeSetup, {
+          storeId: props.storeId,
+          lightningSetupUrl: `/stores/${props.storeId}/lightning/BTC/setup`
+        })
+      );
+    }
+    
+    // If user's node is online but we haven't shown the channel config yet
+    if (!showChannelConfig) {
+      return React.createElement(React.Fragment, null,
+        React.createElement('div', { className: 'text-center mb-4' },
+          // React.createElement('div', { className: 'alert alert-success' }, connectionMessage),
+          
+          React.createElement('button', {
+            className: 'btn btn-primary btn-lg',
+            onClick: getChannel,
+            disabled: fetchingLspInfo
+          }, fetchingLspInfo ? 'Connecting...' : 'Get a Lightning Channel'),
+          
+          lspErrorMessage && React.createElement('div', {
+            className: 'alert alert-danger mt-3'
+          }, lspErrorMessage)
+        )
+      );
     }
     
     // Otherwise show the regular channel configuration components
@@ -108,8 +162,8 @@ window.LSPS1App = function(props) {
       React.createElement(window.LoadingSpinner) : 
       renderContent(),
     
-    // Only show connection footer if a lightning node is configured
-    props.userHasLightningNode && React.createElement(window.ConnectionFooter, {
+    // Only show connection footer if a lightning node is configured and we're showing channel config
+    props.userHasLightningNode && showChannelConfig && React.createElement(window.ConnectionFooter, {
       userNodeIsConnectedToLsp: userNodeIsConnectedToLsp,
       userNodeFailedToConnectToLsp: userNodeFailedToConnectToLsp,
       connectedLspName: connectedLspName,

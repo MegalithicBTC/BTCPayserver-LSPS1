@@ -48,31 +48,21 @@ namespace BTCPayServer.Plugins.LSPS1.Controllers
             string? nodePublicKey = await _lightningNodeService.GetNodePublicKey(store);
             bool userHasLightningNode = !string.IsNullOrEmpty(nodePublicKey);
             
-            // Initialize variables
+            // Initialize variables - we don't connect to LSP yet until user requests it
             bool userNodeIsConnectedToLsp = false;
             bool userNodeFailedToConnectToLsp = false;
             LspProvider? connectedLsp = null;
             LSPS1GetInfoResponse? lspInfo = null;
             IEnumerable<Dictionary<string, object>> channels = Array.Empty<Dictionary<string, object>>();
             
-            // Only try to connect to LSP if user has a Lightning node
+            // Only get channels if user has a Lightning node
             if (userHasLightningNode)
             {
                 // Get the user's current channels
                 var lightningChannels = await _lightningNodeService.GetLightningChannels(store);
                 channels = ConvertChannelsToClientFormat(lightningChannels);
                 
-                // Try to connect to the LSP
-                var result = await _lsps1Service.TryConnectToLspAsync(storeId, lsp);
-                userNodeIsConnectedToLsp = result.success;
-                userNodeFailedToConnectToLsp = !result.success;
-                connectedLsp = result.selectedLsp;
-                
-                // Fetch LSP info if connected
-                if (userNodeIsConnectedToLsp && connectedLsp != null)
-                {
-                    lspInfo = await _lsps1Service.GetLspInfoAsync(storeId, connectedLsp);
-                }
+                // Don't automatically connect to LSP on page load, wait for user to click "Get a Lightning Channel"
             }
             
             var vm = new PluginPageViewModel
@@ -80,7 +70,7 @@ namespace BTCPayServer.Plugins.LSPS1.Controllers
                 StoreId = storeId,
                 AvailableLsps = _lspProviderService.GetAllLsps(),
                 ConnectedLsp = connectedLsp,
-                SelectedLspSlug = lsp ?? connectedLsp?.Slug ?? string.Empty,
+                SelectedLspSlug = lsp ?? "megalith-lsp", // Default to Megalith LSP if none selected
                 LspInfo = lspInfo,
                 NodePublicKey = nodePublicKey ?? string.Empty,
                 UserHasLightningNode = userHasLightningNode,

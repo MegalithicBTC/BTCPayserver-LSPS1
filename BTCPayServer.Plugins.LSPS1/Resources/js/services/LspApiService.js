@@ -8,6 +8,7 @@ window.LspApiService = {
       return false;
     }
     
+    // Normalize the URL to ensure it ends with a slash
     this.lspUrl = lspUrl.trim().endsWith('/') ? lspUrl.trim() : lspUrl.trim() + '/';
     console.log("LSP API Service initialized with URL:", this.lspUrl);
     return true;
@@ -40,43 +41,63 @@ window.LspApiService = {
       console.log("Posting order to:", orderUrl);
       console.log("Order payload:", payload);
       
-      const response = await fetch(orderUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-      });
+      // Use a timeout for the fetch operation to prevent hanging
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
       
-      const responseText = await response.text();
-      console.log("Raw LSP response:", responseText);
-      
-      // Try to parse the response as JSON
-      let result;
       try {
-        result = JSON.parse(responseText);
-      } catch (e) {
-        console.error("Failed to parse LSP response as JSON:", e);
-        return { 
-          success: false, 
-          error: "Invalid response from LSP", 
-          rawResponse: responseText 
+        const response = await fetch(orderUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload),
+          signal: controller.signal
+        });
+        
+        // Clear the timeout
+        clearTimeout(timeoutId);
+        
+        const responseText = await response.text();
+        console.log("Raw LSP response:", responseText);
+        
+        // Try to parse the response as JSON
+        let result;
+        try {
+          result = JSON.parse(responseText);
+        } catch (e) {
+          console.error("Failed to parse LSP response as JSON:", e);
+          return { 
+            success: false, 
+            error: "Invalid response from LSP", 
+            rawResponse: responseText 
+          };
+        }
+        
+        if (!response.ok) {
+          console.error("LSP returned error:", result);
+          return { 
+            success: false, 
+            error: result.error?.message || `Error ${response.status}: ${response.statusText}`,
+            details: result 
+          };
+        }
+        
+        return {
+          success: true,
+          data: result
         };
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        if (fetchError.name === 'AbortError') {
+          console.error("Request to LSP timed out after 30 seconds");
+          return {
+            success: false,
+            error: "Request to LSP timed out. Please try again."
+          };
+        }
+        throw fetchError; // Re-throw to be caught by outer try/catch
       }
-      
-      if (!response.ok) {
-        console.error("LSP returned error:", result);
-        return { 
-          success: false, 
-          error: result.error?.message || `Error ${response.status}: ${response.statusText}`,
-          details: result 
-        };
-      }
-      
-      return {
-        success: true,
-        data: result
-      };
     } catch (error) {
       console.error("Error creating channel order with LSP:", error);
       return {
@@ -97,40 +118,60 @@ window.LspApiService = {
       const statusUrl = `${this.lspUrl}order/${orderId}`;
       console.log("Checking order status at:", statusUrl);
       
-      const response = await fetch(statusUrl);
+      // Use a timeout for the fetch operation
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
       
-      if (!response.ok) {
-        console.error(`Error polling order status: ${response.status}`);
-        return { 
-          success: false, 
-          error: `Error ${response.status}: ${response.statusText}` 
+      try {
+        const response = await fetch(statusUrl, {
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (!response.ok) {
+          console.error(`Error polling order status: ${response.status}`);
+          return { 
+            success: false, 
+            error: `Error ${response.status}: ${response.statusText}` 
+          };
+        }
+        
+        const result = await response.json();
+        console.log("Order status from LSP:", result);
+        
+        // Map the state to a standard status
+        let status = "processing";
+        
+        if (result.state) {
+          const state = result.state.toUpperCase();
+          status = state === "COMPLETED" || state === "SUCCESS" ? "complete" :
+                  state === "FAILED" || state === "ERROR" ? "failed" :
+                  state === "PAYMENT_PENDING" || state === "OPEN" ? "waiting_for_payment" :
+                  state === "PAID" || state === "PAYMENT_RECEIVED" ? "processing" :
+                  "processing";
+        }
+        
+        return {
+          success: true,
+          status,
+          orderId: result.order_id || orderId,
+          channelId: result.channel_id,
+          errorMessage: result.error_message,
+          rawState: result.state,
+          details: result
         };
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        if (fetchError.name === 'AbortError') {
+          console.error("Request to LSP timed out after 10 seconds");
+          return {
+            success: false,
+            error: "Request to LSP timed out. Please try again."
+          };
+        }
+        throw fetchError; // Re-throw to be caught by outer try/catch
       }
-      
-      const result = await response.json();
-      console.log("Order status from LSP:", result);
-      
-      // Map the state to a standard status
-      let status = "processing";
-      
-      if (result.state) {
-        const state = result.state.toUpperCase();
-        status = state === "COMPLETED" || state === "SUCCESS" ? "complete" :
-                state === "FAILED" || state === "ERROR" ? "failed" :
-                state === "PAYMENT_PENDING" || state === "OPEN" ? "waiting_for_payment" :
-                state === "PAID" || state === "PAYMENT_RECEIVED" ? "processing" :
-                "processing";
-      }
-      
-      return {
-        success: true,
-        status,
-        orderId: result.order_id || orderId,
-        channelId: result.channel_id,
-        errorMessage: result.error_message,
-        rawState: result.state,
-        details: result
-      };
     } catch (error) {
       console.error("Error checking order status with LSP:", error);
       return {

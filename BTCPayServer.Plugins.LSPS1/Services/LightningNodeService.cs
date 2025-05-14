@@ -61,6 +61,23 @@ namespace BTCPayServer.Plugins.LSPS1.Services
                         _logger.LogInformation("Retrieving node info directly from Lightning client");
                         var nodeInfo = await client.GetInfo();
                         
+                        // Log the complete nodeInfo object for debugging
+                        _logger.LogDebug("Complete GetInfo response: {@NodeInfo}", nodeInfo);
+                        
+                        // Log each node in NodeInfoList if available
+                        if (nodeInfo?.NodeInfoList != null)
+                        {
+                            foreach (var node in nodeInfo.NodeInfoList)
+                            {
+                                _logger.LogDebug("Node info detail: NodeId={NodeId}", 
+                                    node.NodeId);
+                            }
+                        }
+                        else
+                        {
+                            _logger.LogWarning("GetInfo response contains null or empty NodeInfoList");
+                        }
+
                         // For Core Lightning, the NodeId is available in the NodeInfoList (corresponds to 'id' in getinfo)
                         var firstNode = nodeInfo?.NodeInfoList?.FirstOrDefault();
                         if (firstNode?.NodeId != null)

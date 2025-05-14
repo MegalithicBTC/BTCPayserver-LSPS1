@@ -4,94 +4,117 @@ window.ChannelOrderManager = {
   options: null,
   pollingInterval: null,
   orderPollingInterval: null,
+  lspUrl: null,
+  nodePublicKey: null,
   
   init(lspInfo, lspUrl, nodePublicKey) {
+    if (!lspInfo) {
+      console.error("ChannelOrderManager init failed: lspInfo is required");
+      return false;
+    }
+    
+    if (!lspUrl) {
+      console.error("ChannelOrderManager init failed: lspUrl is required");
+      return false;
+    }
+    
+    if (!nodePublicKey) {
+      console.error("ChannelOrderManager init failed: nodePublicKey is required");
+      return false;
+    }
+    
     this.lspInfo = lspInfo;
-    this.options = window.LspManager?.processChannelOptions(lspInfo);
+    this.lspUrl = lspUrl;
     this.nodePublicKey = nodePublicKey;
     
-    // Initialize the LSP API Service with the LSP URL
-    window.LspApiService.init(lspUrl);
+    // Process options if LspManager is available
+    if (window.LspManager && typeof window.LspManager.processChannelOptions === 'function') {
+      this.options = window.LspManager.processChannelOptions(lspInfo);
+    } else {
+      console.warn("LspManager not available, cannot process channel options");
+      // Create basic options from lspInfo directly
+      this.options = {
+        minChannelSizeSat: lspInfo.min_initial_client_balance_sat || "0",
+        maxChannelSizeSat: lspInfo.max_initial_client_balance_sat || "16777215"
+      };
+    }
+    
+    // Initialize the LSP API Service with the LSP URL if available
+    if (window.LspApiService && typeof window.LspApiService.init === 'function') {
+      window.LspApiService.init(lspUrl);
+    } else {
+      console.warn("LspApiService not available, some functionality may be limited");
+    }
     
     console.log("Channel Order Manager initialized with:", {
       options: this.options,
-      lspUrl,
-      nodePublicKey
+      lspUrl: this.lspUrl,
+      nodePublicKey: this.nodePublicKey
     });
+    
+    return true;
   },
   
   // Create an order with the specified channel size
   async createOrder(channelSize, isPrivate = false) {
-    if (!this.nodePublicKey) {
-      console.error("Node public key is required for creating an order");
-      return { success: false, error: "Lightning node public key not available" };
+    if (!this.nodePublicKey || !this.lspUrl) {
+      console.error("Cannot create order - missing required configuration");
+      return { success: false, error: "Channel manager not properly configured" };
     }
     
     try {
-      console.log(`Creating channel order for ${channelSize} sats, private: ${isPrivate}`);
+      console.log(`Creating channel order: ${channelSize} sats, private: ${isPrivate}`);
       
-      // Call the LSP API service directly
-      const result = await window.LspApiService.createOrder(
-        this.nodePublicKey, 
-        channelSize, 
-        isPrivate
-      );
-      
-      console.log("Order creation result:", result);
-      
-      // If we have a successful order with an order_id, start polling
-      if (result.success && result.data && result.data.order_id) {
-        this.startOrderStatusPolling(result.data.order_id);
+      // Try to use LspApiService if available
+      if (window.LspApiService && typeof window.LspApiService.createOrder === 'function') {
+        return await window.LspApiService.createOrder(this.nodePublicKey, channelSize, isPrivate);
+      } else {
+        console.error("LspApiService not available for order creation");
+        return { success: false, error: "Channel order service not available" };
       }
-      
-      return result;
     } catch (error) {
       console.error("Error creating channel order:", error);
-      return {
-        success: false,
-        error: error.message || "Failed to create channel order"
-      };
+      return { success: false, error: error.message || "Unknown error creating channel" };
     }
   },
   
   // Poll for order status directly from the LSP
   startOrderStatusPolling(orderId) {
+    if (!orderId || !this.lspUrl) {
+      console.error("Cannot poll order status - missing required data");
+      return false;
+    }
+    
+    // Clear any existing polling interval
     if (this.orderPollingInterval) {
       clearInterval(this.orderPollingInterval);
     }
     
-    let attempts = 0;
-    const maxAttempts = 60; // 5 minutes at 5-second intervals
-    
+    // Set up polling interval
     this.orderPollingInterval = setInterval(async () => {
       try {
-        // Use the LSP API service to check order status directly
-        const result = await window.LspApiService.getOrderStatus(orderId);
-        console.log("Order status poll result:", result);
-        
-        // Update UI with order status
-        if (window.OrderResult && typeof window.OrderResult.updateStatus === 'function') {
-          window.OrderResult.updateStatus(result);
-        }
-        
-        // If order is complete or failed, stop polling
-        if (result.status === 'complete' || result.status === 'failed') {
-          clearInterval(this.orderPollingInterval);
+        if (window.LspApiService && typeof window.LspApiService.getOrderStatus === 'function') {
+          const status = await window.LspApiService.getOrderStatus(orderId);
+          console.log("Order status update:", status);
           
-          // If complete, trigger a channel list refresh
-          if (result.status === 'complete') {
-            await window.ChannelManager.refreshChannels();
+          // If we have a complete or failed state, stop polling
+          if (status.status === 'complete' || status.status === 'failed') {
+            clearInterval(this.orderPollingInterval);
+            this.orderPollingInterval = null;
           }
-        }
-        
-        attempts++;
-        if (attempts >= maxAttempts) {
-          console.log("Order status polling timed out");
+          
+          // Dispatch a custom event with the status for other components to listen to
+          window.dispatchEvent(new CustomEvent('lsps1:order-status-update', { detail: status }));
+        } else {
+          console.error("LspApiService not available for status polling");
           clearInterval(this.orderPollingInterval);
+          this.orderPollingInterval = null;
         }
       } catch (error) {
         console.error("Error polling order status:", error);
       }
     }, 5000); // Poll every 5 seconds
+    
+    return true;
   }
 };

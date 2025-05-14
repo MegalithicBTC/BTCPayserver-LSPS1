@@ -4,8 +4,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (rootElement) {
     try {
-      // Initialize managers
-      window.LspManager.init();
+      // Initialize managers and services in the correct order
+      // First initialize LspManager which doesn't depend on other services
+      if (window.LspManager) {
+        window.LspManager.init();
+      } else {
+        console.error("LspManager is not available");
+      }
       
       // Get the data from the consolidated JSON block
       const dataElement = document.getElementById('lsps1-data');
@@ -15,6 +20,15 @@ document.addEventListener("DOMContentLoaded", () => {
         try {
           // Parse the JSON data
           props = JSON.parse(dataElement.textContent);
+          console.log("Parsed LSPS1 data:", props);
+          
+          // Initialize LspApiService if lspUrl is available
+          if (props.lspUrl && typeof window.LspApiService !== 'undefined') {
+            window.LspApiService.init(props.lspUrl);
+            console.log("LspApiService initialized with URL:", props.lspUrl);
+          } else {
+            console.warn("Cannot initialize LspApiService: missing URL or service not loaded");
+          }
           
           // Get the LSP info
           if (props.initialLspInfoJson && props.initialLspInfoJson !== 'null') {
@@ -23,7 +37,18 @@ document.addEventListener("DOMContentLoaded", () => {
               : props.initialLspInfoJson;
               
             if (lspInfo && Object.keys(lspInfo).length > 0) {
-              window.ChannelOrderManager.init(lspInfo);
+              // Initialize ChannelOrderManager if all dependencies are available
+              if (typeof window.ChannelOrderManager !== 'undefined' && 
+                  typeof window.LspApiService !== 'undefined') {
+                window.ChannelOrderManager.init(
+                  lspInfo,
+                  props.lspUrl || '',
+                  props.nodePublicKey || ''
+                );
+                console.log("ChannelOrderManager initialized");
+              } else {
+                console.warn("Cannot initialize ChannelOrderManager: dependencies not loaded");
+              }
             }
           }
         } catch (parseError) {
