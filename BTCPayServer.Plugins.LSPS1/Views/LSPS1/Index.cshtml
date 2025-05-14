@@ -32,10 +32,13 @@
 <!-- Add CSRF token separately as it's not part of our model -->
 <div id="request-verification-token" data-token="@xsrf" style="display: none;"></div>
 
+<!-- Include BTCPay's QR Code library first -->
+<script src="~/js/qrcode.js" asp-append-version="true"></script>
+
 <!-- Include React libraries -->
 <script src="~/Resources/js/vendor/react.production.min.js" defer asp-append-version="true"></script>
 <script src="~/Resources/js/vendor/react-dom.production.min.js" defer asp-append-version="true"></script>
-<script src="~/Resources/js/vendor/react-qr-code.js" defer asp-append-version="true"></script>
+
 
 <!-- Services in dependency order -->
 <script src="~/Resources/js/services/LspStorageManager.js" defer asp-append-version="true"></script>

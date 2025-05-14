@@ -61,10 +61,23 @@ window.OrderResultInvoice = {
       console.error("Error parsing invoice amount:", e);
     }
     
+    // Create a simple text QR representation when the QRCode library isn't available
+    const createTextQR = (text) => {
+      const div = document.createElement('div');
+      div.style.padding = '15px';
+      div.style.background = '#fff';
+      div.style.borderRadius = '4px';
+      div.style.color = '#000';
+      div.style.fontSize = '12px';
+      div.style.textAlign = 'center';
+      div.textContent = 'QR Code not available. Invoice: ' + text.substring(0, 20) + '...';
+      return div;
+    };
+    
     return React.createElement('div', { className: 'mt-3 text-center' },
       React.createElement('h5', null, 'Pay this invoice to create your channel'),
       
-      // QR code container with react-qr-code
+      // QR code container using BTCPay Server's built-in QR code library
       React.createElement('div', { 
         className: 'qr-container mb-3', 
         style: { 
@@ -75,48 +88,77 @@ window.OrderResultInvoice = {
           padding: '10px',
           borderRadius: '8px'
         },
-        onClick: copyToClipboard
-      },
-        // Use the QRCodeSVG component from react-qr-code.js
-        React.createElement(QRCodeSVG, {
-          value: lightningUrl,
-          size: 256,
-          level: "L",
-          bgColor: "#FFFFFF",
-          fgColor: "#000000",
-          includeMargin: true,
-          style: {
-            maxWidth: '100%',
-            height: 'auto'
+        onClick: copyToClipboard,
+        ref: (el) => {
+          if (el && !el.hasChildNodes()) {
+            try {
+              if (typeof QRCode === 'undefined') {
+                console.warn('QRCode library is not defined. Loading script dynamically.');
+                
+                // Try to load the QRCode library dynamically if not available
+                const script = document.createElement('script');
+                script.src = '/js/qrcode.js';
+                script.onload = () => {
+                  // Create QR code using the built-in BTCPay Server library once script is loaded
+                  if (typeof QRCode !== 'undefined') {
+                    try {
+                      const qrCodeEl = document.createElement('div');
+                      qrCodeEl.id = 'invoice-qrcode-' + Math.random().toString(36).substring(2, 9);
+                      el.appendChild(qrCodeEl);
+                      
+                      // Initialize QR code with the built-in library
+                      new QRCode(qrCodeEl, {
+                        text: lightningUrl,
+                        width: 256,
+                        height: 256,
+                        colorDark: "#000000",
+                        colorLight: "#ffffff",
+                        correctLevel: QRCode.CorrectLevel.M,
+                        useSVG: true
+                      });
+                      
+                      // Add lightning bolt overlay
+                      this.addLightningOverlay(el);
+                    } catch (err) {
+                      console.error('Error creating QR code after loading library', err);
+                      el.appendChild(createTextQR(lightningUrl));
+                    }
+                  } else {
+                    el.appendChild(createTextQR(lightningUrl));
+                  }
+                };
+                script.onerror = () => {
+                  console.error('Failed to load QRCode library');
+                  el.appendChild(createTextQR(lightningUrl));
+                };
+                document.head.appendChild(script);
+              } else {
+                // QRCode is already available, create QR code
+                const qrCodeEl = document.createElement('div');
+                qrCodeEl.id = 'invoice-qrcode-' + Math.random().toString(36).substring(2, 9);
+                el.appendChild(qrCodeEl);
+                
+                // Initialize QR code with the built-in library
+                new QRCode(qrCodeEl, {
+                  text: lightningUrl,
+                  width: 256,
+                  height: 256,
+                  colorDark: "#000000",
+                  colorLight: "#ffffff",
+                  correctLevel: QRCode.CorrectLevel.M,
+                  useSVG: true
+                });
+                
+                // Add lightning bolt overlay
+                this.addLightningOverlay(el);
+              }
+            } catch (err) {
+              console.error('Error rendering QR code:', err);
+              el.appendChild(createTextQR(lightningUrl));
+            }
           }
-        }),
-        
-        // Lightning bolt overlay
-        React.createElement('div', {
-          style: {
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            width: '60px',
-            height: '60px',
-            background: 'white',
-            borderRadius: '50%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
-          }
-        },
-        React.createElement('img', {
-          src: '/Resources/img/lightning-bolt.svg',
-          alt: 'Lightning',
-          style: {
-            width: '40px',
-            height: '40px'
-          }
-        }))
-      ),
+        }
+      }),
       
       // Show amount if available
       amountSats && React.createElement('p', { className: 'mb-3 fs-5' },
@@ -142,5 +184,31 @@ window.OrderResultInvoice = {
       React.createElement('i', { className: 'bi bi-lightning-charge-fill me-1' }),
       'Open in Lightning Wallet')
     );
+  },
+  
+  // Helper method to add lightning bolt overlay
+  addLightningOverlay: function(containerEl) {
+    const overlay = document.createElement('div');
+    overlay.style.position = 'absolute';
+    overlay.style.top = '50%';
+    overlay.style.left = '50%';
+    overlay.style.transform = 'translate(-50%, -50%)';
+    overlay.style.width = '60px';
+    overlay.style.height = '60px';
+    overlay.style.background = 'white';
+    overlay.style.borderRadius = '50%';
+    overlay.style.display = 'flex';
+    overlay.style.alignItems = 'center';
+    overlay.style.justifyContent = 'center';
+    overlay.style.boxShadow = '0 2px 5px rgba(0,0,0,0.2)';
+    
+    const img = document.createElement('img');
+    img.src = '/Resources/img/lightning-bolt.svg';
+    img.alt = 'Lightning';
+    img.style.width = '40px';
+    img.style.height = '40px';
+    
+    overlay.appendChild(img);
+    containerEl.appendChild(overlay);
   }
 };

@@ -70,16 +70,6 @@ window.ChannelSizeSlider = function(props) {
     }
   };
   
-  // Calculate fee if options include a fee rate
-  const calculateFee = () => {
-    if (!options || typeof options.feeRatePercent !== 'number') return null;
-    
-    const fee = Math.round(validChannelSize * options.feeRatePercent / 100);
-    return fee;
-  };
-  
-  const fee = calculateFee();
-  
   return React.createElement('div', { className: 'channel-size-slider-container' },
     React.createElement('div', { className: 'slider-header' },
       React.createElement('label', { htmlFor: 'channel-size-slider' }, 'Channel Size:'),
@@ -113,13 +103,6 @@ window.ChannelSizeSlider = function(props) {
     React.createElement('div', { className: 'd-flex justify-content-between mt-1' },
       React.createElement('small', { className: 'text-muted' }, formatSats(minSats)),
       React.createElement('small', { className: 'text-muted' }, formatSats(maxSats))
-    ),
-    
-    // Show fee information if available
-    fee !== null && React.createElement('div', { className: 'fee-info mt-2' },
-      React.createElement('small', null, 
-        `Channel Opening Fee: ${formatSats(fee)} (${options.feeRatePercent.toFixed(2)}%)`
-      )
     )
   );
 };
