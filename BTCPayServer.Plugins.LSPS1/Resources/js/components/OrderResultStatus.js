@@ -23,7 +23,7 @@ window.OrderResultStatus = {
                     statusData.status === "failed";
 
     if (isFailed) {
-      statusMessage = 'Channel Opening Failed';
+      statusMessage = `Payment received but channel opening failed. Contact ${window.LSPS1App?.props?.connectedLspName || "the LSP"} for support.`;
       statusClass = 'text-danger';
       
       statusDetails = React.createElement('div', { className: 'mt-3' },
@@ -141,7 +141,6 @@ window.OrderResultStatus = {
     return React.createElement('div', { className: `alert ${statusClass === 'text-success' ? 'alert-success' : statusClass === 'text-danger' ? 'alert-danger' : statusClass === 'text-warning' ? 'alert-warning' : 'alert-info'} mt-3` },
       React.createElement('div', { className: 'd-flex justify-content-between align-items-start' },
         React.createElement('div', null,
-          React.createElement('h5', null, 'Order Status:'),
           React.createElement('p', { className: statusDetails ? 'mb-2' : 'mb-0' }, statusMessage)
         ),
         !isFailed && React.createElement('button', {
