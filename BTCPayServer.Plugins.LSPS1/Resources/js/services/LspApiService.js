@@ -76,9 +76,42 @@ window.LspApiService = {
         
         if (!response.ok) {
           console.error("LSP returned error:", result);
+          
+          // Handle specific LSPS1 error codes
+          let errorMessage = "";
+          if (result.error) {
+            // Standard JSON-RPC error
+            if (result.error.code === -32602) {
+              const property = result.error.data?.property;
+              const message = result.error.data?.message || 'Invalid parameters';
+              errorMessage = property ? `Invalid parameter: ${property} - ${message}` : message;
+            }
+            // LSPS1 specific error codes
+            else if (result.error.code === 1) {
+              errorMessage = `Client rejected: ${result.error.data?.message || 'Your request was rejected by the LSP'}`;
+            }
+            else if (result.error.code === 100) {
+              const property = result.error.data?.property;
+              errorMessage = property 
+                ? `Option mismatch for ${property}: ${result.error.data?.message || 'The requested values don\'t match LSP requirements'}`
+                : `Option mismatch: ${result.error.data?.message || 'The requested values don\'t match LSP requirements'}`;
+            }
+            else if (result.error.code === 101) {
+              errorMessage = "Order not found";
+            }
+            else {
+              // Generic error handling with code if available
+              errorMessage = result.error.message || 
+                           (result.error.code ? `Error code ${result.error.code}` : `Error ${response.status}: ${response.statusText}`);
+            }
+          } else {
+            // Fallback for non-standard error responses
+            errorMessage = `Error ${response.status}: ${response.statusText}`;
+          }
+          
           return { 
             success: false, 
-            error: result.error?.message || `Error ${response.status}: ${response.statusText}`,
+            error: errorMessage,
             details: result 
           };
         }
@@ -132,34 +165,105 @@ window.LspApiService = {
         
         if (!response.ok) {
           console.error(`Error polling order status: ${response.status}`);
+          
+          let errorMessage = `Error ${response.status}: ${response.statusText}`;
+          
+          // Try to parse the response to get a more detailed error message
+          try {
+            const errorResult = await response.json();
+            
+            // Handle specific LSPS1 error codes
+            if (errorResult.error) {
+              // JSON-RPC standard error
+              if (errorResult.error.code === -32602) {
+                errorMessage = `Invalid parameter: ${errorResult.error.data?.message || 'The request contains invalid parameters'}`;
+              }
+              // LSPS1 specific - Order not found
+              else if (errorResult.error.code === 101) {
+                errorMessage = "Order not found";
+              }
+              else {
+                errorMessage = errorResult.error.message || errorMessage;
+              }
+            }
+          } catch (e) {
+            // If we can't parse the response, just use the generic error
+            console.error("Failed to parse error response:", e);
+          }
+          
           return { 
             success: false, 
-            error: `Error ${response.status}: ${response.statusText}` 
+            error: errorMessage
           };
         }
         
         const result = await response.json();
         console.log("Order status from LSP:", result);
         
-        // Map the state to a standard status
+        // Map the order_state to a standard status
         let status = "processing";
         
-        if (result.state) {
-          const state = result.state.toUpperCase();
-          status = state === "COMPLETED" || state === "SUCCESS" ? "complete" :
-                  state === "FAILED" || state === "ERROR" ? "failed" :
-                  state === "PAYMENT_PENDING" || state === "OPEN" ? "waiting_for_payment" :
-                  state === "PAID" || state === "PAYMENT_RECEIVED" ? "processing" :
+        if (result.order_state) {
+          const state = result.order_state.toUpperCase();
+          status = state === "COMPLETED" ? "complete" :
+                  state === "FAILED" ? "failed" :
+                  state === "CREATED" ? "waiting_for_payment" :
                   "processing";
+        }
+        
+        // Get payment state information
+        let paymentInfo = null;
+        
+        if (result.payment) {
+          // Check for Lightning payment (bolt11)
+          if (result.payment.bolt11) {
+            const bolt11State = result.payment.bolt11.state?.toUpperCase();
+            
+            paymentInfo = {
+              type: 'lightning',
+              state: bolt11State,
+              expiresAt: result.payment.bolt11.expires_at,
+              invoice: result.payment.bolt11.invoice,
+              feeSats: result.payment.bolt11.fee_total_sat,
+              totalSats: result.payment.bolt11.order_total_sat
+            };
+            
+            // Update status based on payment state
+            if (bolt11State === 'EXPECT_PAYMENT') {
+              status = 'waiting_for_payment';
+            } else if (bolt11State === 'HOLD') {
+              status = 'payment_received';
+            } else if (bolt11State === 'PAID') {
+              status = 'processing';
+            } else if (bolt11State === 'REFUNDED' || bolt11State === 'CANCELLED') {
+              status = 'failed';
+              paymentInfo.refundReason = 'Payment was cancelled or refunded';
+            }
+          }
+        }
+        
+        // Check channel information
+        let channelInfo = null;
+        if (result.channel) {
+          channelInfo = {
+            fundedAt: result.channel.funded_at,
+            fundingOutpoint: result.channel.funding_outpoint,
+            expiresAt: result.channel.expires_at
+          };
+          
+          // If we have channel data and funding outpoint, the channel is complete
+          if (result.channel.funding_outpoint) {
+            status = 'complete';
+          }
         }
         
         return {
           success: true,
           status,
           orderId: result.order_id || orderId,
-          channelId: result.channel_id,
-          errorMessage: result.error_message,
-          rawState: result.state,
+          paymentInfo,
+          channelInfo,
+          rawState: result.order_state,
           details: result
         };
       } catch (fetchError) {
