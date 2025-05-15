@@ -23,7 +23,7 @@ window.OrderResultStatus = {
                     statusData.status === "failed";
 
     if (isFailed) {
-      statusMessage = `Payment received but channel opening failed. Contact ${window.LSPS1App?.props?.connectedLspName || "the LSP"} for support.`;
+      statusMessage = `Invoice payment failed because the LSP encountered and error when trying to open the channel. Contact ${window.LSPS1App?.props?.connectedLspName || "the LSP"} for support.`;
       statusClass = 'text-danger';
       
       statusDetails = React.createElement('div', { className: 'mt-3' },
@@ -77,7 +77,7 @@ window.OrderResultStatus = {
             role: 'alert'
           }, 
             React.createElement('i', { className: 'bi bi-info-circle me-2' }),
-            'Please expect your channel will be open and usable when 3 to 6 blocks have passed.'
+            'Please expect your channel will be open and able to receive payments after 3 to 6 block confirmations.'
           )
         );
       }

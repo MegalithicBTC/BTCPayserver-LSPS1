@@ -194,14 +194,7 @@ window.ChannelOrderManager = {
       this.checkOrderStatus(orderId);
     }, 5000); // Poll every 5 seconds
     
-    // Also start channel polling if available
-    if (window.ChannelManager && typeof window.ChannelManager.startChannelPolling === 'function') {
-      console.log("Channel polling started at", new Date().toLocaleTimeString());
-      window.ChannelManager.startChannelPolling();
-    } else {
-      console.warn("ChannelManager.startChannelPolling not available, only polling orders");
-    }
-    
+   
     return true;
   },
   

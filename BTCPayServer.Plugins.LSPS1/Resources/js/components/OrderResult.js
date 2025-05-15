@@ -1,6 +1,6 @@
 // OrderResult component - Shows results of a channel order
 window.OrderResult = function(resultProps) {
-  const { result } = resultProps;
+  const { orderResult } = resultProps;  // Changed from 'result' to 'orderResult' to match the prop name in LSPS1App
   
   // Create state to store the latest order status updates and channel data
   const [orderStatus, setOrderStatus] = React.useState(null);
@@ -27,10 +27,10 @@ window.OrderResult = function(resultProps) {
     document.addEventListener('channels-updated', handleChannelsUpdated);
     
     // Start polling for order status if we have a successful result with an orderId
-    if (result.success && result.orderId) {
-      console.log("Starting order status polling for order:", result.orderId);
+    if (orderResult && orderResult.success && orderResult.orderId) {
+      console.log("Starting order status polling for order:", orderResult.orderId);
       if (window.ChannelOrderManager && typeof window.ChannelOrderManager.startOrderStatusPolling === 'function') {
-        window.ChannelOrderManager.startOrderStatusPolling(result.orderId);
+        window.ChannelOrderManager.startOrderStatusPolling(orderResult.orderId);
       }
     }
     
@@ -38,25 +38,30 @@ window.OrderResult = function(resultProps) {
       document.removeEventListener('order-status-updated', handleStatusUpdate);
       document.removeEventListener('channels-updated', handleChannelsUpdated);
     };
-  }, [result]);
+  }, [orderResult]);
+  
+  // If we don't have a result yet, don't render anything
+  if (!orderResult) {
+    return null;
+  }
   
   // Get the most current status data
   const currentStatusData = React.useMemo(() => {
-    if (!orderStatus && !result) return null;
+    if (!orderStatus && !orderResult) return null;
     
     // If we have orderStatus, merge it with channel data
     if (orderStatus) {
       return {
         ...orderStatus,
         channelData: channelData.length > 0 ? channelData : null,
-        paymentInfo: orderStatus.paymentInfo || result.paymentInfo,
-        data: orderStatus.data || result.data
+        paymentInfo: orderStatus.paymentInfo || orderResult.paymentInfo,
+        data: orderStatus.data || orderResult.data
       };
     }
     
     // Otherwise just use the initial result
-    return result;
-  }, [orderStatus, result, channelData]);
+    return orderResult;
+  }, [orderStatus, orderResult, channelData]);
   
   // Determine appropriate alert class based on result and status
   const alertClass = React.useMemo(() => {
@@ -65,7 +70,7 @@ window.OrderResult = function(resultProps) {
                     currentStatusData?.status === "failed";
     if (isFailed) return 'alert-danger';
     
-    if (!result.success) return 'alert-danger';
+    if (!orderResult.success) return 'alert-danger';
     
     // Check if order is completed
     const isCompleted = currentStatusData?.order_state === "COMPLETED" || 
@@ -75,7 +80,7 @@ window.OrderResult = function(resultProps) {
     if (isCompleted) return 'alert-success';
     if (currentStatusData?.status === 'waiting_for_payment') return 'alert-warning';
     return 'alert-info';
-  }, [result.success, currentStatusData]);
+  }, [orderResult.success, currentStatusData]);
   
   // Determine the heading and message based on status
   const { heading, message } = React.useMemo(() => {
@@ -90,18 +95,18 @@ window.OrderResult = function(resultProps) {
       };
     }
     
-    if (!result.success) {
+    if (!orderResult.success) {
       return {
         heading: 'Error',
-        message: result.message || 'Failed to create order.'
+        message: orderResult.message || 'Failed to create order.'
       };
     }
     
     return {
       heading: 'Success!',
-      message: result.message || 'Order created successfully.'
+      message: orderResult.message || 'Order created successfully.'
     };
-  }, [result, currentStatusData]);
+  }, [orderResult, currentStatusData]);
   
   return React.createElement('div', { className: `alert ${alertClass}` },
     React.createElement('div', { className: 'd-flex justify-content-between align-items-start' },

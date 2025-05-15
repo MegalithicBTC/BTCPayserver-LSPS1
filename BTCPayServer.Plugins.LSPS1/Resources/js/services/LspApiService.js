@@ -246,14 +246,7 @@ window.LspApiService = {
           };
         }
         
-        // If completed, trigger channel polling to show channel details
-        if (isCompleted && window.ChannelManager) {
-          console.log("Order COMPLETED, ensuring channel polling is active");
-          if (typeof window.ChannelManager.startChannelPolling === 'function') {
-            window.ChannelManager.startChannelPolling();
-          }
-        }
-        
+   
         return {
           success: true,
           status: orderStatus,
