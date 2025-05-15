@@ -1,94 +1,122 @@
-// LSP Manager - Handles core LSP functionality and integration
+// LSP Manager - Centralized manager for LSP connections and configuration
 window.LspManager = {
   lspInfo: null,
-  options: null,
+  lspOptions: null,
+  selectedLsp: null,
   
-  /**
-   * Initialize the LSP Manager
-   */
   init() {
     console.log("Initializing LSP Manager");
-    // Try to load LSP info from data attribute or localStorage
-    this.lspInfo = window.LspStorageManager.loadLspInfo();
     
-    // Process channel options if LSP info is available
-    if (this.lspInfo && Object.keys(this.lspInfo).length > 0) {
-      this.options = window.LspConfigManager.processChannelOptions(this.lspInfo);
-      console.log("LSP options processed:", this.options);
-    } else {
-      // Use debug level instead of warning for initial load
-      console.debug("LSP options not available during initial load");
-    }
+    // Simple initialization without storage dependency
+    return true;
   },
   
-  /**
-   * Update LSP information
-   * @param {Object} lspInfo - New LSP information
-   */
-  updateLspInfo(lspInfo) {
-    if (lspInfo && Object.keys(lspInfo).length > 0) {
-      this.lspInfo = lspInfo;
-      this.options = window.LspConfigManager.processChannelOptions(lspInfo);
-      window.LspStorageManager.storeLspInfo(lspInfo);
+  processOptions() {
+    if (!this.lspInfo) return null;
+    
+    // Process options using LspConfigManager if available
+    if (window.LspConfigManager && typeof window.LspConfigManager.processChannelOptions === 'function') {
+      this.lspOptions = window.LspConfigManager.processChannelOptions(this.lspInfo);
       
+      // Log updated options
       console.log("LSP info updated:", this.lspInfo);
-      console.log("LSP options updated:", this.options);
+      console.log("LSP options updated:", this.lspOptions);
       
-      // Dispatch event for components to react
-      document.dispatchEvent(new CustomEvent('lsp-info-updated', { 
-        detail: { lspInfo: this.lspInfo, options: this.options } 
-      }));
+      // If no options were returned, create basic values
+      if (!this.lspOptions) {
+        this.createBasicOptions();
+      }
+    } else {
+      this.createBasicOptions();
     }
-  },
-  
-  /**
-   * Store LSP information (alias for updateLspInfo)
-   * @param {Object} lspInfo - New LSP information
-   */
-  storeLspInfo(lspInfo) {
-    this.updateLspInfo(lspInfo);
-  },
-  
-  /**
-   * Reset/clear all LSP information
-   */
-  clearLspInfo() {
-    this.lspInfo = {};
-    this.options = null;
-    window.LspStorageManager.clearLspInfo();
     
-    // Dispatch event for components to react
-    document.dispatchEvent(new CustomEvent('lsp-info-cleared'));
-  },
-  
-  /**
-   * Get LSP channel options
-   * @returns {Object|null} The processed channel options or null
-   */
-  getChannelOptions() {
-    if (!this.options && this.lspInfo) {
-      this.options = window.LspConfigManager.processChannelOptions(this.lspInfo);
+    // Ensure critical values exist with fallbacks
+    if (!this.lspOptions) this.lspOptions = {};
+    
+    // Handle snake_case and camelCase property names in LSPS1 responses
+    const getVal = (obj, props, defaultVal) => {
+      for (const prop of props) {
+        if (obj[prop] !== undefined && obj[prop] !== null) {
+          // Convert string number to actual number
+          return typeof obj[prop] === 'string' ? parseInt(obj[prop], 10) : obj[prop];
+        }
+      }
+      return defaultVal;
+    };
+    
+    // Create proper options for the channel slider with LSP balance values
+    // Megalith LSP sends client balance as 0, but sets LSP balance values
+    const minLspBalance = getVal(this.lspInfo, 
+      ['min_initial_lsp_balance_sat', 'minInitialLspBalanceSat'], 150000);
+    const maxLspBalance = getVal(this.lspInfo, 
+      ['max_initial_lsp_balance_sat', 'maxInitialLspBalanceSat'], 16000000);
+        
+    if (!this.lspOptions.minSats || this.lspOptions.minSats === 0) {
+      this.lspOptions.minSats = minLspBalance;
     }
-    return this.options;
+    
+    if (!this.lspOptions.maxSats || this.lspOptions.maxSats === 0) {
+      this.lspOptions.maxSats = maxLspBalance;
+    }
+    
+    if (!this.lspOptions.minChannelSize || this.lspOptions.minChannelSize === 0) {
+      this.lspOptions.minChannelSize = minLspBalance;
+    }
+    
+    if (!this.lspOptions.maxChannelSize || this.lspOptions.maxChannelSize === 0) {
+      this.lspOptions.maxChannelSize = maxLspBalance;
+    }
+    
+    if (!this.lspOptions.defaultChannelSize || this.lspOptions.defaultChannelSize === 0) {
+      // Set a sensible default value between min and max (about 1/3 of the range)
+      const range = this.lspOptions.maxSats - this.lspOptions.minSats;
+      this.lspOptions.defaultChannelSize = this.lspOptions.minSats + Math.round(range / 3);
+      // Ensure defaultChannelSize is at least 500k sats but not more than max
+      this.lspOptions.defaultChannelSize = Math.max(
+        Math.min(500000, this.lspOptions.maxSats),
+        this.lspOptions.defaultChannelSize
+      );
+    }
+    
+    return this.lspOptions;
   },
   
-  /**
-   * Check if a channel size is valid
-   * @param {number} channelSize - Size in satoshis
-   * @returns {boolean} Whether size is valid
-   */
-  isValidChannelSize(channelSize) {
-    const options = this.getChannelOptions();
-    return window.LspConfigManager.validateChannelSize(channelSize, options);
+  createBasicOptions() {
+    // Set up basic options if manager is not available
+    console.log("Creating basic channel options");
+    this.lspOptions = {
+      minSats: 150000,
+      maxSats: 16000000,
+      minChannelSize: 150000,
+      maxChannelSize: 16000000,
+      defaultChannelSize: 1000000,
+      feeRatePercent: 0.1
+    };
   },
   
-  /**
-   * Calculate fee for a channel size
-   * @param {number} channelSize - Size in satoshis
-   * @returns {number} Fee in satoshis
-   */
-  calculateChannelFee(channelSize) {
-    const options = this.getChannelOptions();
-    return window.LspConfigManager.calculateFee(channelSize, options);
+  updateLspInfo(lspInfo) {
+    if (!lspInfo) return false;
+    
+    this.lspInfo = lspInfo;
+    this.processOptions();
+    
+    return true;
+  },
+  
+  getLspOptions() {
+    return this.lspOptions;
+  },
+  
+  getLspInfo() {
+    return this.lspInfo;
+  },
+  
+  setSelectedLsp(lspSlug) {
+    this.selectedLsp = lspSlug;
+    return true;
+  },
+  
+  getSelectedLsp() {
+    return this.selectedLsp;
   }
 };

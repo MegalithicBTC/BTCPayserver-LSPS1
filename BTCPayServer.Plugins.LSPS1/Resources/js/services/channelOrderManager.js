@@ -38,19 +38,44 @@ window.ChannelOrderManager = {
     
     // Process options if LspConfigManager is available
     if (window.LspConfigManager && typeof window.LspConfigManager.processChannelOptions === 'function') {
-      this.options = window.LspConfigManager.processChannelOptions(lspInfo);
+      const processedOptions = window.LspConfigManager.processChannelOptions(lspInfo);
+      if (processedOptions) {
+        this.options = processedOptions;
+        
+        // Ensure processed options have minSats and maxSats for the slider
+        if (!this.options.minSats && this.options.minChannelSize) {
+          this.options.minSats = this.options.minChannelSize;
+        }
+        
+        if (!this.options.maxSats && this.options.maxChannelSize) {
+          this.options.maxSats = this.options.maxChannelSize;
+        }
+      }
     } 
     
     // If options processing failed or returned null, create our own options object directly from lspInfo
-    if (!this.options) {
+    if (!this.options || (!this.options.minSats && !this.options.maxSats)) {
       console.warn("Creating basic channel options from lspInfo directly");
+      
+      // Camel case keys from snake case for consistency
+      const min_initial_client = parseInt(lspInfo.min_initial_client_balance_sat || lspInfo.minInitialClientBalanceSat || 0, 10);
+      const max_initial_client = parseInt(lspInfo.max_initial_client_balance_sat || lspInfo.maxInitialClientBalanceSat || 0, 10);
+      
+      // If client balance is 0, use LSP balance
+      const min_lsp = parseInt(lspInfo.min_initial_lsp_balance_sat || lspInfo.minInitialLspBalanceSat || 150000, 10);
+      const max_lsp = parseInt(lspInfo.max_initial_lsp_balance_sat || lspInfo.maxInitialLspBalanceSat || 16000000, 10);
+      
+      // Get the values (with LSP balance as fallback if client balance is 0)
+      const minSats = min_initial_client > 0 ? min_initial_client : min_lsp;
+      const maxSats = max_initial_client > 0 ? max_initial_client : max_lsp;
+      
       this.options = {
-        minChannelSize: parseInt(lspInfo.min_initial_client_balance_sat || lspInfo.min_channel_balance || 100000, 10),
-        maxChannelSize: parseInt(lspInfo.max_initial_client_balance_sat || lspInfo.max_channel_balance || 16777215, 10),
-        defaultChannelSize: parseInt(lspInfo.recommended_channel_balance || 1000000, 10),
+        minChannelSize: minSats,
+        maxChannelSize: maxSats,
+        defaultChannelSize: parseInt(lspInfo.recommended_channel_balance || lspInfo.recommendedChannelBalance || 1000000, 10),
         feeRatePercent: parseFloat(lspInfo.channel_fee_rate ? lspInfo.channel_fee_rate / 1000000 : 0.001),
-        minSats: parseInt(lspInfo.min_initial_client_balance_sat || lspInfo.min_channel_balance || 100000, 10),
-        maxSats: parseInt(lspInfo.max_initial_client_balance_sat || lspInfo.max_channel_balance || 16777215, 10)
+        minSats: minSats,
+        maxSats: maxSats
       };
       
       // Ensure default size is within min/max bounds
@@ -60,13 +85,17 @@ window.ChannelOrderManager = {
       );
     }
     
-    // Make sure the options include minSats and maxSats properties that the slider component expects
-    if (this.options && !this.options.minSats) {
-      this.options.minSats = this.options.minChannelSize;
+    // Ensure we have these essential properties for the slider component
+    if (!this.options.minSats) {
+      this.options.minSats = this.options.minChannelSize || 150000;
     }
-    if (this.options && !this.options.maxSats) {
-      this.options.maxSats = this.options.maxChannelSize;
+    if (!this.options.maxSats) {
+      this.options.maxSats = this.options.maxChannelSize || 16000000;
     }
+    
+    // Make sure we actually have values that make sense
+    if (this.options.minSats <= 0) this.options.minSats = 150000;
+    if (this.options.maxSats <= 0 || this.options.maxSats < this.options.minSats) this.options.maxSats = 16000000;
     
     // Initialize the LSP API Service with the LSP URL if available
     if (window.LspApiService && typeof window.LspApiService.init === 'function') {

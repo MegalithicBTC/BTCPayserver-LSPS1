@@ -1,164 +1,94 @@
-// LspStorageManager - Handles storage of LSP info in localStorage
+// LspStorageManager - Mock implementation that doesn't use localStorage
 window.LspStorageManager = {
-  // Key constants
+  // Key constants kept for interface compatibility
   LSP_INFO_KEY: 'lsps1_lsp_info',
   LSP_PUBKEYS_KEY: 'lsps1_lsp_pubkeys',
   
   /**
-   * Save LSP information to localStorage
-   * @param {Object} lspInfo - LSP information to store
+   * Mock save LSP information (doesn't actually store anything)
+   * @param {Object} lspInfo - LSP information
    */
   storeLspInfo(lspInfo) {
-    if (!lspInfo) return;
+    if (!lspInfo) return false;
+    console.log("LSP info received (no storage)");
     
-    try {
-      localStorage.setItem(this.LSP_INFO_KEY, JSON.stringify(lspInfo));
-      console.log("LSP info saved to localStorage");
-      
-      // Also store in hidden input if it exists
-      const lspInfoElement = document.getElementById('lsp-info-data');
-      if (lspInfoElement) {
-        lspInfoElement.value = JSON.stringify(lspInfo);
-      }
-      
-      // Process the LSP info to extract and store public keys
-      this.processLspInfo(lspInfo);
-      
-      return true;
-    } catch (error) {
-      console.error("Error saving LSP info to localStorage:", error);
-      return false;
+    // Also store in hidden input if it exists (for current page only)
+    const lspInfoElement = document.getElementById('lsp-info-data');
+    if (lspInfoElement) {
+      lspInfoElement.value = JSON.stringify(lspInfo);
     }
+    
+    return true;
   },
   
   /**
-   * Load LSP information from localStorage or DOM
-   * @returns {Object|null} The stored LSP info or null
+   * Mock load LSP information
+   * @returns {Object|null} The LSP info from DOM or null
    */
   loadLspInfo() {
-    try {
-      // First try to get from the hidden input
-      const lspInfoElement = document.getElementById('lsp-info-data');
-      if (lspInfoElement && lspInfoElement.value) {
+    // Only try to get from the hidden input (current page only, no persistence)
+    const lspInfoElement = document.getElementById('lsp-info-data');
+    if (lspInfoElement && lspInfoElement.value) {
+      try {
         const parsedInfo = JSON.parse(lspInfoElement.value);
-        
-        // Save to localStorage for future page loads
-        if (parsedInfo && Object.keys(parsedInfo).length > 0) {
-          localStorage.setItem(this.LSP_INFO_KEY, JSON.stringify(parsedInfo));
-        }
-        
-        console.log("LSP info loaded from DOM element");
+        console.log("LSP info loaded from DOM element (no storage)");
         return parsedInfo;
+      } catch (error) {
+        console.error("Error parsing LSP info from DOM:", error);
       }
-      
-      // Fallback to localStorage
-      const storedInfo = localStorage.getItem(this.LSP_INFO_KEY);
-      if (storedInfo) {
-        const parsedInfo = JSON.parse(storedInfo);
-        console.log("LSP info loaded from localStorage");
-        return parsedInfo;
-      }
-    } catch (error) {
-      console.error("Error loading LSP info:", error);
     }
+    
     return null;
   },
   
   /**
-   * Clear LSP information from localStorage and DOM
+   * Mock clear LSP information (just clears DOM element)
    */
   clearLspInfo() {
-    try {
-      localStorage.removeItem(this.LSP_INFO_KEY);
-      console.log("LSP info cleared from localStorage");
-      
-      // Also clear from hidden input if it exists
-      const lspInfoElement = document.getElementById('lsp-info-data');
-      if (lspInfoElement) {
-        lspInfoElement.value = '';
-      }
-      
-      // Note: We don't clear the pubkeys list as that's used for historical channel reference
-    } catch (error) {
-      console.error("Error clearing LSP info from localStorage:", error);
+    const lspInfoElement = document.getElementById('lsp-info-data');
+    if (lspInfoElement) {
+      lspInfoElement.value = '';
     }
+    console.log("LSP info cleared (no storage used)");
   },
   
   /**
-   * Store a list of LSP public keys extracted from URIs
+   * Mock store LSP public keys from URIs (doesn't store anything)
    * @param {Array} uris - Array of LSP URI strings
    */
   storeLspPubKeysFromUris(uris) {
     if (!uris || !Array.isArray(uris) || uris.length === 0) {
-      console.warn("No valid URIs provided to store LSP public keys");
+      console.warn("No valid URIs provided");
       return;
     }
     
-    // Extract public keys from URIs (format: pubkey@host:port)
+    // Just log the public keys without storing them
     const pubKeys = uris.map(uri => {
-      try {
-        // Split the URI on @ and take the first part (the pubkey)
-        const parts = uri.split('@');
-        if (parts.length > 0) {
-          return parts[0];
-        }
-        return null;
-      } catch (e) {
-        console.error("Error extracting pubkey from URI:", e);
-        return null;
-      }
+      const parts = uri.split('@');
+      return parts.length > 0 ? parts[0] : null;
     }).filter(key => key !== null);
     
-    if (pubKeys.length === 0) {
-      console.warn("No valid public keys extracted from URIs");
-      return;
-    }
-    
-    // Get existing keys
-    const existingKeys = this.getLspPubKeys();
-    
-    // Merge existing keys with new ones (remove duplicates)
-    const mergedKeys = [...new Set([...existingKeys, ...pubKeys])];
-    
-    // Store the updated list
-    this.setLspPubKeys(mergedKeys);
-    
-    console.log(`Stored ${pubKeys.length} LSP public key(s) in localStorage`);
+    console.log(`Extracted ${pubKeys.length} LSP public key(s) (no storage)`);
   },
   
   /**
-   * Store LSP public keys directly
+   * Mock store LSP public keys (doesn't store anything)
    * @param {Array} pubKeys - Array of public key strings
    */
   setLspPubKeys(pubKeys) {
-    if (!pubKeys || !Array.isArray(pubKeys)) {
-      console.error("Invalid public keys provided");
-      return;
-    }
-    
-    try {
-      localStorage.setItem(this.LSP_PUBKEYS_KEY, JSON.stringify(pubKeys));
-    } catch (error) {
-      console.error("Error storing LSP public keys in localStorage:", error);
-    }
+    console.log(`Received ${pubKeys?.length || 0} public keys (no storage)`);
   },
   
   /**
-   * Get stored LSP public keys
-   * @returns {Array} - Array of public key strings
+   * Mock get stored LSP public keys
+   * @returns {Array} - Empty array since we don't store anything
    */
   getLspPubKeys() {
-    try {
-      const storedKeys = localStorage.getItem(this.LSP_PUBKEYS_KEY);
-      return storedKeys ? JSON.parse(storedKeys) : [];
-    } catch (error) {
-      console.error("Error retrieving LSP public keys from localStorage:", error);
-      return [];
-    }
+    return [];
   },
   
   /**
-   * Process get_info response to extract and store LSP public keys
+   * Mock process LSP info (doesn't store anything)
    * @param {Object} lspInfo - The LSPS1GetInfoResponse object
    */
   processLspInfo(lspInfo) {
@@ -167,33 +97,15 @@ window.LspStorageManager = {
       return;
     }
     
-    // Extract and store nodeId if available
-    if (lspInfo.nodeId) {
-      const pubKeys = this.getLspPubKeys();
-      if (!pubKeys.includes(lspInfo.nodeId)) {
-        pubKeys.push(lspInfo.nodeId);
-        this.setLspPubKeys(pubKeys);
-        console.log("LSP public key added to pubkey list");
-      }
-    }
-    
-    // Extract and store public keys from URIs if available
     if (lspInfo.uris && Array.isArray(lspInfo.uris) && lspInfo.uris.length > 0) {
-      this.storeLspPubKeysFromUris(lspInfo.uris);
-    } else {
-      console.warn("No URIs found in LSP info");
+      console.log(`Processed ${lspInfo.uris.length} LSP URIs (no storage)`);
     }
   },
   
   /**
-   * Clear all stored LSP public keys
+   * Mock clear all stored LSP public keys (does nothing)
    */
   clearLspPubKeys() {
-    try {
-      localStorage.removeItem(this.LSP_PUBKEYS_KEY);
-      console.log("Cleared all stored LSP public keys");
-    } catch (error) {
-      console.error("Error clearing LSP public keys from localStorage:", error);
-    }
+    console.log("Public keys cleared (no storage used)");
   }
 };

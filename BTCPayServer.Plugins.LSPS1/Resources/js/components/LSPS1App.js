@@ -8,21 +8,25 @@ window.LSPS1App = function(props) {
   const [lspInfo, setLspInfo] = React.useState(props.lspInfo || {});
   const [fetchingLspInfo, setFetchingLspInfo] = React.useState(false);
   const [lspErrorMessage, setLspErrorMessage] = React.useState("");
+  // Add channel size state
+  const [channelSize, setChannelSize] = React.useState(1000000); // Default 1M sats
+  const [orderResult, setOrderResult] = React.useState(null);
+  const [lspUrl, setLspUrl] = React.useState(props.lspUrl || "");
   
-  // Helper function to process LSP info and store public keys
-  const processLspInfoAndStoreKeys = (lspInfo) => {
+  // Helper function to process LSP info and extract public keys
+  const processLspInfo = (lspInfo) => {
     if (!lspInfo || !lspInfo.uris || !Array.isArray(lspInfo.uris) || lspInfo.uris.length === 0) {
-      console.warn("No valid URIs in LSP info to store");
+      console.warn("No valid URIs in LSP info");
       return;
     }
     
-    // Use the LspStorageManager to store public keys if available
-    if (window.LspStorageManager && typeof window.LspStorageManager.storeLspPubKeysFromUris === 'function') {
-      window.LspStorageManager.storeLspPubKeysFromUris(lspInfo.uris);
-      console.log("Stored LSP public keys from URIs:", lspInfo.uris);
-    } else {
-      console.error("LspStorageManager.storeLspPubKeysFromUris not available");
-    }
+    // Just extract and log the public keys, no storage
+    const pubKeys = lspInfo.uris.map(uri => {
+      const parts = uri.split('@');
+      return parts.length > 0 ? parts[0] : null;
+    }).filter(key => key !== null);
+    
+    console.log("LSP public keys from URIs:", pubKeys);
   };
 
   // Function to get LSP info and connect to the LSP
@@ -46,8 +50,8 @@ window.LSPS1App = function(props) {
         setConnectedLspName(props.availableLsps.find(l => l.slug === lspSlug)?.name || "LSP");
         setConnectionMessage(`Connected to ${props.availableLsps.find(l => l.slug === lspSlug)?.name || "LSP"}`);
         
-        // Process LSP info and store public keys
-        processLspInfoAndStoreKeys(data.lspInfo);
+        // Process LSP info to extract public keys (no storage)
+        processLspInfo(data.lspInfo);
         
         // Make sure we have the lspUrl
         if (!data.lspUrl) {
@@ -56,7 +60,10 @@ window.LSPS1App = function(props) {
           return false;
         }
         
-        // Store LSP info for later use - Check if services are available first
+        // Save the LSP URL for the channel configuration
+        setLspUrl(data.lspUrl);
+        
+        // Initialize API service with LSP URL
         if (window.LspApiService) {
           if (typeof window.LspApiService.init === 'function') {
             window.LspApiService.init(data.lspUrl);
@@ -68,12 +75,13 @@ window.LSPS1App = function(props) {
           console.error("LspApiService is not available");
         }
         
+        // Update LSP info in LspManager (no storage)
         if (window.LspManager) {
-          if (typeof window.LspManager.storeLspInfo === 'function') {
-            window.LspManager.storeLspInfo(data.lspInfo);
-            console.log("LSP info stored in LspManager");
+          if (typeof window.LspManager.updateLspInfo === 'function') {
+            window.LspManager.updateLspInfo(data.lspInfo);
+            console.log("LSP info updated in LspManager");
           } else {
-            console.error("LspManager.storeLspInfo method is not available");
+            console.error("LspManager.updateLspInfo method is not available");
           }
         } else {
           console.error("LspManager is not available");
@@ -120,27 +128,48 @@ window.LSPS1App = function(props) {
       );
     }
     
-    // Show LSP connection button
+    // If user's node is not connected to LSP, show connection button
+    if (!userNodeIsConnectedToLsp) {
+      return React.createElement(React.Fragment, null,
+        React.createElement('div', { className: 'text-center mb-4' },
+          React.createElement('button', {
+            className: 'btn btn-primary btn-lg',
+            onClick: connectToLsp,
+            disabled: fetchingLspInfo
+          }, fetchingLspInfo ? 'Connecting...' : 'Connect to Lightning Service Provider'),
+          
+          lspErrorMessage && React.createElement('div', {
+            className: 'alert alert-danger mt-3'
+          }, lspErrorMessage)
+        )
+      );
+    }
+    
+    // If connected to LSP, show channel configuration
     return React.createElement(React.Fragment, null,
-      React.createElement('div', { className: 'text-center mb-4' },
-        React.createElement('button', {
-          className: 'btn btn-primary btn-lg',
-          onClick: connectToLsp,
-          disabled: fetchingLspInfo
-        }, fetchingLspInfo ? 'Connecting...' : 'Connect to Lightning Service Provider'),
-        
-        lspErrorMessage && React.createElement('div', {
-          className: 'alert alert-danger mt-3'
-        }, lspErrorMessage)
-      ),
-      
-      userNodeIsConnectedToLsp && React.createElement('div', { className: 'alert alert-info mt-4' },
+      React.createElement('div', { className: 'alert alert-info mb-4' },
         React.createElement('strong', null, connectionMessage),
         React.createElement('p', { className: 'mt-2' }, 
           "Your node public key: ",
           React.createElement('code', null, props.nodePublicKey)
         )
-      )
+      ),
+      
+      // Add the channel configuration component here
+      React.createElement(window.ChannelConfiguration, {
+        channelSize: channelSize,
+        setChannelSize: setChannelSize,
+        lspInfo: lspInfo,
+        lspUrl: lspUrl,
+        nodePublicKey: props.nodePublicKey,
+        setOrderResult: setOrderResult
+      }),
+      
+      // Show order result if we have one
+      orderResult && React.createElement(window.OrderResult, {
+        orderResult: orderResult,
+        channelSize: channelSize
+      })
     );
   };
   

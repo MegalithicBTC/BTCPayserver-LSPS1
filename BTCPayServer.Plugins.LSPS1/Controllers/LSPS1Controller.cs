@@ -39,14 +39,24 @@ namespace BTCPayServer.Plugins.LSPS1.Controllers
         [HttpGet("")]
         public async Task<IActionResult> Index(string storeId, [FromQuery] string? lsp = null)
         {
+            _logger.LogInformation("LSPS1Controller: Index request for store {StoreId}", storeId);
+            
             // Get store for Lightning node information
             var store = await _lightningNodeService.GetStore(storeId);
             if (store == null)
+            {
+                _logger.LogWarning("LSPS1Controller: Store {StoreId} not found", storeId);
                 return NotFound();
+            }
+
+            _logger.LogInformation("LSPS1Controller: Found store {StoreId}, Name: {StoreName}", storeId, store.StoreName);
 
             // First check if a valid Lightning node configuration exists
             string? nodePublicKey = await _lightningNodeService.GetNodePublicKey(store);
+            _logger.LogInformation("LSPS1Controller: Node public key result: {NodePublicKey}", nodePublicKey ?? "null");
+            
             bool userHasLightningNode = !string.IsNullOrEmpty(nodePublicKey);
+            _logger.LogInformation("LSPS1Controller: User has Lightning node: {UserHasLightningNode}", userHasLightningNode);
             
             // Initialize variables - we don't connect to LSP yet until user requests it
             bool userNodeIsConnectedToLsp = false;

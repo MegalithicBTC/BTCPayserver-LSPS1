@@ -27,27 +27,44 @@ window.LspConfigManager = {
       16777215 // Default ~16.7M sats (max LN payment)
     );
     
+    // If client balance limits are 0, try to use LSP balance limits instead
+    const minChannelSize = minSats > 0 ? minSats : this.getNumberProperty(
+      lspInfo,
+      ['min_initial_lsp_balance_sat', 'minInitialLspBalanceSat', 'min_channel_balance_sat', 'minChannelBalanceSat'],
+      150000 // Default 150k sats
+    );
+    
+    const maxChannelSize = maxSats > 0 ? maxSats : this.getNumberProperty(
+      lspInfo,
+      ['max_initial_lsp_balance_sat', 'maxInitialLspBalanceSat', 'max_channel_balance_sat', 'maxChannelBalanceSat'],
+      16777215 // Default ~16.7M sats
+    );
+    
     // Use a reasonable default channel size
     const defaultSats = this.getNumberProperty(
       lspInfo, 
       ['recommended_channel_balance', 'recommendedChannelBalance'],
-      1000000 // Default 1M sats
+      Math.min(Math.max(1000000, minChannelSize), maxChannelSize) // Default 1M sats or within range
     );
     
     // Extract fee rate percentage
     const feeRatePercent = this.getFeeRatePercent(lspInfo);
     
     // Calculate some useful properties
-    const minFee = Math.round(minSats * feeRatePercent / 100);
-    const maxFee = Math.round(maxSats * feeRatePercent / 100);
+    const minFee = Math.round(minChannelSize * feeRatePercent / 100);
+    const maxFee = Math.round(maxChannelSize * feeRatePercent / 100);
+    
+    console.log("Channel option calculations:", {
+      minSats, maxSats, minChannelSize, maxChannelSize, defaultSats, feeRatePercent
+    });
     
     // Build and return the options object with defaults for any missing properties
     return {
-      minChannelSize: minSats,
-      maxChannelSize: maxSats,
-      defaultChannelSize: Math.min(Math.max(defaultSats, minSats), maxSats),
-      minSats: minSats, // Add explicit properties for the slider component
-      maxSats: maxSats,
+      minChannelSize: minChannelSize,
+      maxChannelSize: maxChannelSize,
+      defaultChannelSize: Math.min(Math.max(defaultSats, minChannelSize), maxChannelSize),
+      minSats: minChannelSize, // Add explicit properties for the slider component
+      maxSats: maxChannelSize,
       minFee: minFee,
       maxFee: maxFee,
       feeRatePercent: feeRatePercent,
