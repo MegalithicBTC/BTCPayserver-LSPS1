@@ -19,25 +19,22 @@ namespace BTCPayServer.Plugins.LSPS1.Controllers
         private readonly LSPS1Service _lsps1Service;
         private readonly LspProviderService _lspProviderService;
         private readonly LightningNodeService _lightningNodeService;
-        private readonly OrderService _orderService;
         private readonly ILogger<LSPS1Controller> _logger;
 
         public LSPS1Controller(
             LSPS1Service lsps1Service,
             LspProviderService lspProviderService,
             LightningNodeService lightningNodeService,
-            OrderService orderService,
             ILogger<LSPS1Controller> logger)
         {
             _lsps1Service = lsps1Service;
             _lspProviderService = lspProviderService;
             _lightningNodeService = lightningNodeService;
-            _orderService = orderService;
             _logger = logger;
         }
 
         [HttpGet("")]
-        public async Task<IActionResult> Index(string storeId, [FromQuery] string? lsp = null)
+        public async Task<IActionResult> Index(string storeId)
         {
             _logger.LogInformation("LSPS1Controller: Index request for store {StoreId}", storeId);
             
@@ -69,7 +66,7 @@ namespace BTCPayServer.Plugins.LSPS1.Controllers
                 StoreId = storeId,
                 AvailableLsps = _lspProviderService.GetAllLsps(),
                 ConnectedLsp = connectedLsp,
-                SelectedLspSlug = lsp ?? "megalith-lsp", // Default to Megalith LSP if none selected
+                SelectedLspSlug = "megalith-lsp", // Default to Megalith LSP
                 LspInfo = lspInfo,
                 NodePublicKey = nodePublicKey ?? string.Empty,
                 UserHasLightningNode = userHasLightningNode,
@@ -118,7 +115,7 @@ namespace BTCPayServer.Plugins.LSPS1.Controllers
                 var result = await _lsps1Service.TryConnectToLspAsync(storeId, lspSlug);
                 if (!result.success || result.selectedLsp == null)
                 {
-                    return Json(new { success = false, error = "Could not connect to LSP" });
+                    return Json(new { success = false, error = result.message });
                 }
                 
                 var lspInfo = await _lsps1Service.GetLspInfoAsync(storeId, result.selectedLsp);

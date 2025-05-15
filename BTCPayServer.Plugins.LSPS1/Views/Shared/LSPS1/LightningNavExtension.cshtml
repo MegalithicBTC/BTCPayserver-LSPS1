@@ -8,7 +8,8 @@
 {
     <li class="nav-item nav-item-sub" permission="@Policies.CanModifyStoreSettings">
         <a asp-area="" asp-controller="LSPS1" asp-action="Index" asp-route-storeId="@store.Id" class="nav-link @ViewData.ActivePageClass(PluginNavPages.Index)" id="LightningNav-LSPS1">
-            <span text-translate="true">Get Inbound Channel</span>
+            @await Html.PartialAsync("LSPS1/LightningIcon")
+            <span text-translate="true">Get Lightning Channel</span>
         </a>
     </li>
 }

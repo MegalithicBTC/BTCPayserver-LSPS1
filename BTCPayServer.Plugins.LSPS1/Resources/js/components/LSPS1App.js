@@ -8,6 +8,8 @@ window.LSPS1App = function(props) {
   const [lspInfo, setLspInfo] = React.useState(props.lspInfo || {});
   const [fetchingLspInfo, setFetchingLspInfo] = React.useState(false);
   const [lspErrorMessage, setLspErrorMessage] = React.useState("");
+  // Add selected LSP state
+  const [selectedLspSlug, setSelectedLspSlug] = React.useState(props.selectedLspSlug || 'megalith-lsp');
   // Add channel size state
   const [channelSize, setChannelSize] = React.useState(1000000); // Default 1M sats
   const [orderResult, setOrderResult] = React.useState(null);
@@ -35,11 +37,8 @@ window.LSPS1App = function(props) {
       setFetchingLspInfo(true);
       setLspErrorMessage("");
       
-      // Default to Megalith LSP if none selected
-      const lspSlug = props.selectedLspSlug || 'megalith-lsp';
-      
-      console.log(`Getting LSP info for ${lspSlug}`);
-      const response = await fetch(`/stores/${props.storeId}/plugins/lsps1/get-lsp-info?lspSlug=${lspSlug}`);
+      console.log(`Getting LSP info for ${selectedLspSlug}`);
+      const response = await fetch(`/stores/${props.storeId}/plugins/lsps1/get-lsp-info?lspSlug=${selectedLspSlug}`);
       const data = await response.json();
       
       if (data.success && data.lspInfo) {
@@ -47,8 +46,8 @@ window.LSPS1App = function(props) {
         setLspInfo(data.lspInfo);
         setUserNodeIsConnectedToLsp(true);
         setUserNodeFailedToConnectToLsp(false);
-        setConnectedLspName(props.availableLsps.find(l => l.slug === lspSlug)?.name || "LSP");
-        setConnectionMessage(`Connected to ${props.availableLsps.find(l => l.slug === lspSlug)?.name || "LSP"}`);
+        setConnectedLspName(props.availableLsps.find(l => l.slug === selectedLspSlug)?.name || "LSP");
+        setConnectionMessage(`Connected to ${props.availableLsps.find(l => l.slug === selectedLspSlug)?.name || "LSP"}`);
         
         // Process LSP info to extract public keys (no storage)
         processLspInfo(data.lspInfo);
@@ -114,6 +113,32 @@ window.LSPS1App = function(props) {
     getLspInfo();
   };
 
+  // Render LSP selection dropdown
+  const renderLspSelectionDropdown = () => {
+    if (!props.availableLsps || props.availableLsps.length <= 1) {
+      return null;
+    }
+    
+    return React.createElement('div', { className: 'form-group mb-4' },
+      React.createElement('label', { htmlFor: 'lsp-selector', className: 'form-label' }, 'Select Lightning Service Provider:'),
+      React.createElement('select', { 
+        id: 'lsp-selector',
+        className: 'form-select', 
+        value: selectedLspSlug,
+        onChange: (e) => {
+          setSelectedLspSlug(e.target.value);
+        }
+      }, 
+        props.availableLsps.map(lsp => 
+          React.createElement('option', { 
+            key: lsp.slug, 
+            value: lsp.slug
+          }, lsp.name)
+        )
+      )
+    );
+  };
+
   // Determine content based on lightning node availability
   const renderContent = () => {
     // If user has no lightning node connected, show setup instructions
@@ -128,15 +153,17 @@ window.LSPS1App = function(props) {
       );
     }
     
-    // If user's node is not connected to LSP, show connection button
+    // If user's node is not connected to LSP, show connection button and dropdown
     if (!userNodeIsConnectedToLsp) {
       return React.createElement(React.Fragment, null,
+        renderLspSelectionDropdown(),
+        
         React.createElement('div', { className: 'text-center mb-4' },
           React.createElement('button', {
             className: 'btn btn-primary btn-lg',
             onClick: connectToLsp,
             disabled: fetchingLspInfo
-          }, fetchingLspInfo ? 'Connecting...' : 'Connect to Lightning Service Provider'),
+          }, fetchingLspInfo ? 'Connecting...' : `Connect to ${props.availableLsps.find(l => l.slug === selectedLspSlug)?.name || "Lightning Service Provider"}`),
           
           lspErrorMessage && React.createElement('div', {
             className: 'alert alert-danger mt-3'
@@ -178,12 +205,11 @@ window.LSPS1App = function(props) {
       React.createElement(window.LoadingSpinner) : 
       renderContent(),
     
-    // Show connection footer if node is connected to LSP
-    props.userHasLightningNode && userNodeIsConnectedToLsp && React.createElement(window.ConnectionFooter, {
-      userNodeIsConnectedToLsp: userNodeIsConnectedToLsp,
-      connectedLspName: connectedLspName,
-      availableLsps: props.availableLsps,
-      storeId: props.storeId
-    })
+    // Show simple connection info if node is connected to LSP (without dropdown)
+    props.userHasLightningNode && userNodeIsConnectedToLsp && React.createElement('div', { className: 'connection-footer mt-4' },
+      React.createElement('div', { className: 'alert alert-success' },
+        `Connected to ${connectedLspName}`
+      )
+    )
   );
 };
