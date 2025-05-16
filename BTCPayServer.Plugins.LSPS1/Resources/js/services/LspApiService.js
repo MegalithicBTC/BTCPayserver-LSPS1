@@ -25,6 +25,10 @@ window.LspApiService = {
       console.log(`Creating channel order directly with LSP for ${channelSizeInSats} sats, private: ${isPrivateChannel}`);
       
       // Build the order request data following the LSPS1 specification
+      let token = ''
+      if (this.lspUrl.includes('megalith')) {
+        token = 'btcpay-lsp-plugin'
+      }
       const payload = {
         public_key: nodePublicKey,
         lsp_balance_sat: channelSizeInSats.toString(),
@@ -32,7 +36,7 @@ window.LspApiService = {
         required_channel_confirmations: 1,
         funding_confirms_within_blocks: 6,
         channel_expiry_blocks: 13140,
-        token: "btcpay-lsp-plugin",
+        token: token,
         announce_channel: !isPrivateChannel
       };
       
