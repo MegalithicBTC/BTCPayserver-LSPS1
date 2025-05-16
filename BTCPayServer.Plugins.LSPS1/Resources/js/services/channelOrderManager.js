@@ -195,30 +195,12 @@ window.ChannelOrderManager = {
       this.checkOrderStatus(orderId);
     }, 5000); // Poll every 5 seconds
     
-    // Set a timeout for invoice payment
-    // TODO: Set this to 10 minutes (600000 ms) for production
-    // const timeoutDuration = 10000; // 10 seconds for testing
-    // console.log(`Setting invoice payment timeout to ${timeoutDuration}ms (TODO: change to 10 minutes in production)`);
-    
-    // this.invoicePaymentTimeout = setTimeout(() => {
-    //   this.handleInvoiceTimeout(orderId);
-    // }, timeoutDuration);
+
     
     return true;
   },
   
-  // Handle invoice payment timeout
-  handleInvoiceTimeout(orderId) {
-    console.log(`Invoice payment timeout reached for order ${orderId}`);
-    
-    // Stop the polling
-    this.stopOrderStatusPolling();
-    
-    // Dispatch a timeout event for UI components
-    document.dispatchEvent(new CustomEvent('invoice-payment-timeout', { 
-      detail: { orderId, message: "Invoice payment timed out" }
-    }));
-  },
+
   
   // Stop polling for order status
   stopOrderStatusPolling() {
