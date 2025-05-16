@@ -5,11 +5,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (rootElement) {
     try {
-      // Initialize managers and services in the correct order
-      // First initialize LspManager which doesn't depend on other services
-      window.LspManager.init();
-      
-      // Get the data from the consolidated JSON block
+ 
+           // Get the data from the consolidated JSON block
       const dataElement = document.getElementById('lsps1-data');
       let props = {};
       

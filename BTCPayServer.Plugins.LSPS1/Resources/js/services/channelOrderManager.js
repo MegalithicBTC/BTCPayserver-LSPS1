@@ -38,43 +38,27 @@ window.ChannelOrderManager = {
     };
     
     // Process options if LspConfigManager is available
-    const processedOptions = window.LspConfigManager.processChannelOptions(lspInfo);
-    if (processedOptions) {
-      this.options = processedOptions;
-      
-      // Ensure processed options have minSats and maxSats for the slider
-      if (!this.options.minSats && this.options.minChannelSize) {
-        this.options.minSats = this.options.minChannelSize;
-      }
-      
-      if (!this.options.maxSats && this.options.maxChannelSize) {
-        this.options.maxSats = this.options.maxChannelSize;
+    if (window.LspConfigManager) {
+      const processedOptions = window.LspConfigManager.processChannelOptions(lspInfo);
+      if (processedOptions) {
+        this.options = processedOptions;
       }
     } 
     
-    // If options processing failed or returned null, create our own options object directly from lspInfo
+    // Per LSPS1 spec, just use the values directly from lspInfo
     if (!this.options || (!this.options.minSats && !this.options.maxSats)) {
-      console.warn("Creating basic channel options from lspInfo directly");
-      
-      // Camel case keys from snake case for consistency
-      const min_initial_client = parseInt(lspInfo.min_initial_client_balance_sat || lspInfo.minInitialClientBalanceSat || 0, 10);
-      const max_initial_client = parseInt(lspInfo.max_initial_client_balance_sat || lspInfo.maxInitialClientBalanceSat || 0, 10);
-      
-      // If client balance is 0, use LSP balance
-      const min_lsp = parseInt(lspInfo.min_initial_lsp_balance_sat || lspInfo.minInitialLspBalanceSat || 150000, 10);
-      const max_lsp = parseInt(lspInfo.max_initial_lsp_balance_sat || lspInfo.maxInitialLspBalanceSat || 16000000, 10);
-      
-      // Get the values (with LSP balance as fallback if client balance is 0)
-      const minSats = min_initial_client > 0 ? min_initial_client : min_lsp;
-      const maxSats = max_initial_client > 0 ? max_initial_client : max_lsp;
+      // Use spec fields directly
+      const minClientBalance = parseInt(lspInfo.min_initial_client_balance_sat, 10);
+      const maxClientBalance = parseInt(lspInfo.max_initial_client_balance_sat, 10);
+      const minLspBalance = parseInt(lspInfo.min_initial_lsp_balance_sat, 10);
+      const maxLspBalance = parseInt(lspInfo.max_initial_lsp_balance_sat, 10);
       
       this.options = {
-        minChannelSize: minSats,
-        maxChannelSize: maxSats,
-        defaultChannelSize: parseInt(lspInfo.recommended_channel_balance || lspInfo.recommendedChannelBalance || 1000000, 10),
-        feeRatePercent: parseFloat(lspInfo.channel_fee_rate ? lspInfo.channel_fee_rate / 1000000 : 0.001),
-        minSats: minSats,
-        maxSats: maxSats
+        minChannelSize: minClientBalance,
+        maxChannelSize: maxClientBalance,
+        defaultChannelSize: parseInt(lspInfo.min_channel_balance_sat || 1000000, 10),
+        minSats: minClientBalance,
+        maxSats: maxClientBalance
       };
       
       // Ensure default size is within min/max bounds
@@ -83,18 +67,6 @@ window.ChannelOrderManager = {
         this.options.maxChannelSize
       );
     }
-    
-    // Ensure we have these essential properties for the slider component
-    if (!this.options.minSats) {
-      this.options.minSats = this.options.minChannelSize || 150000;
-    }
-    if (!this.options.maxSats) {
-      this.options.maxSats = this.options.maxChannelSize || 16000000;
-    }
-    
-    // Make sure we actually have values that make sense
-    if (this.options.minSats <= 0) this.options.minSats = 150000;
-    if (this.options.maxSats <= 0 || this.options.maxSats < this.options.minSats) this.options.maxSats = 16000000;
     
     // Initialize the LSP API Service with the LSP URL
     window.LspApiService.init(lspUrl);
@@ -121,67 +93,86 @@ window.ChannelOrderManager = {
       const response = await window.LspApiService.createOrder(this.nodePublicKey, channelSize, isPrivate);
       
       if (response.success && response.data) {
-        // Extract invoice and order details from the response
+        // Extract order details following LSPS1 spec
         const orderId = response.data.order_id;
-        let invoice = null;
         let paymentInfo = null;
         
-        // Try to find the invoice in the response
+        // Get payment info from bolt11 payment option if available
         if (response.data.payment && response.data.payment.bolt11) {
           const bolt11Data = response.data.payment.bolt11;
-          invoice = bolt11Data.invoice;
           paymentInfo = {
-            type: 'lightning',
-            state: bolt11Data.state,
-            expiresAt: bolt11Data.expires_at,
             invoice: bolt11Data.invoice,
+            expiresAt: bolt11Data.expires_at,
             feeSats: bolt11Data.fee_total_sat,
             totalSats: bolt11Data.order_total_sat
           };
         }
         
-        // Start polling if we have an order ID
-        if (orderId) {
-          this.startOrderStatusPolling(orderId);
-        }
+        // Set the current order ID for status polling
+        this.currentOrderId = orderId;
         
         return {
           success: true,
-          orderId,
-          status: 'waiting_for_payment',
-          message: 'Order created successfully.',
-          paymentInfo,
+          orderId: orderId,
+          paymentInfo: paymentInfo,
           data: response.data
         };
+      } else {
+        return {
+          success: false,
+          error: response.error || "Failed to create channel order",
+          details: response.details
+        };
       }
-      
-      return response;
     } catch (error) {
-      console.error("Error creating channel order:", error);
-      return { success: false, error: error.message || "Unknown error creating channel" };
+      console.error("Error in createOrder:", error);
+      return { success: false, error: error.message };
     }
   },
   
-  // Poll for order status directly from the LSP
+  // Poll for order status
   startOrderStatusPolling(orderId) {
     if (!orderId) {
-      console.error("Cannot start polling: Order ID is required");
+      console.error("Cannot start polling without order ID");
       return false;
     }
     
-    // Store the current order ID for reference
+    // Store the order ID
     this.currentOrderId = orderId;
     
-    // Clear any existing polling interval and timeout
+    // Clear any existing polling interval
     this.stopOrderStatusPolling();
     
-    // Do an initial check immediately
-    this.checkOrderStatus(orderId);
+    // Start polling for status every 5 seconds
+    this.orderPollingInterval = setInterval(async () => {
+      try {
+        const status = await this.checkOrderStatus(orderId);
+        
+        // Dispatch status update event
+        if (status.success) {
+          if (window.OrderResult && window.OrderResult.updateStatus) {
+            window.OrderResult.updateStatus(status);
+          }
+          
+          // Check if we should stop polling
+          if (status.status === 'complete' || status.status === 'failed') {
+            console.log(`Order ${status.status}, stopping status polling`);
+            this.stopOrderStatusPolling();
+          }
+        } else {
+          console.warn("Order status check failed:", status.error);
+        }
+      } catch (error) {
+        console.error("Error checking order status:", error);
+      }
+    }, 5000);
     
-    console.log(`Starting order status polling for orderId: ${orderId}`);
-    this.orderPollingInterval = setInterval(() => {
-      this.checkOrderStatus(orderId);
-    }, 5000); // Poll every 5 seconds
+    // Initial immediate status check
+    this.checkOrderStatus(orderId).then(status => {
+      if (status.success && window.OrderResult && window.OrderResult.updateStatus) {
+        window.OrderResult.updateStatus(status);
+      }
+    });
     
     return true;
   },
@@ -189,63 +180,18 @@ window.ChannelOrderManager = {
   // Stop polling for order status
   stopOrderStatusPolling() {
     if (this.orderPollingInterval) {
-      console.log("Stopping order status polling");
       clearInterval(this.orderPollingInterval);
       this.orderPollingInterval = null;
-    }
-    
-    // Clear any invoice payment timeout
-    if (this.invoicePaymentTimeout) {
-      console.log("Clearing invoice payment timeout");
-      clearTimeout(this.invoicePaymentTimeout);
-      this.invoicePaymentTimeout = null;
-    }
-    
-    // Also stop channel polling if we were polling
-    if (window.ChannelManager && typeof window.ChannelManager.stopChannelPolling === 'function') {
-      window.ChannelManager.stopChannelPolling();
     }
   },
   
   // Check the status of an order
   async checkOrderStatus(orderId) {
-    if (!orderId) {
-      console.error("Order ID is required for status check");
-      return { success: false, error: "Missing order ID" };
-    }
-    
     try {
-      console.log(`Checking status for order ${orderId} at ${new Date().toLocaleTimeString()}`);
-      
-      const status = await window.LspApiService.getOrderStatus(orderId);
-      
-      // Update any OrderResult components via static method
-      window.OrderResult.updateStatus(status);
-      
-      // Automatically stop polling if the order is complete or failed
-      if (status.success && 
-          (status.status === 'complete' || 
-           status.status === 'completed' || 
-           status.status === 'failed')) {
-        console.log(`Order ${orderId} reached final state (${status.status}), stopping polling`);
-        this.stopOrderStatusPolling();
-      }
-      
-      // If payment is received, clear the invoice payment timeout
-      if (status.success && 
-          (status.status === 'payment_received' || 
-           status.payment?.bolt11?.state === 'HOLD')) {
-        console.log("Payment received, clearing invoice payment timeout");
-        if (this.invoicePaymentTimeout) {
-          clearTimeout(this.invoicePaymentTimeout);
-          this.invoicePaymentTimeout = null;
-        }
-      }
-      
-      return status;
+      return await window.LspApiService.getOrderStatus(orderId);
     } catch (error) {
       console.error("Error checking order status:", error);
-      return { success: false, error: error.message || "Unknown error checking order status" };
+      return { success: false, error: error.message };
     }
   }
 };

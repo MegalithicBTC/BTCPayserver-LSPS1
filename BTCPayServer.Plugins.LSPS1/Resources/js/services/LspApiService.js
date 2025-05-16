@@ -26,17 +26,17 @@ window.LspApiService = {
       
       // Build the order request data following the LSPS1 specification
       const payload = {
-        public_key: nodePublicKey, // Changed from node_pubkey to public_key to match API requirements
-        lsp_balance_sat: channelSizeInSats.toString(), // Convert to string for API
+        public_key: nodePublicKey,
+        lsp_balance_sat: channelSizeInSats.toString(),
         client_balance_sat: "0",
-        required_channel_confirmations: 1, // Standard (not zero-conf)
+        required_channel_confirmations: 1,
         funding_confirms_within_blocks: 6,
         channel_expiry_blocks: 13140,
         token: "btcpay-lsp-plugin",
-        announce_channel: !isPrivateChannel // Public by default unless private is selected
+        announce_channel: !isPrivateChannel
       };
       
-      // For LSPS1 API, we directly append the endpoint to the base URL which ends with /v1
+      // For LSPS1 API, we directly append the endpoint to the base URL
       const baseUrl = this.lspUrl.endsWith('/') ? this.lspUrl : this.lspUrl + '/';
       const orderUrl = `${baseUrl}create_order`;
       
@@ -79,7 +79,7 @@ window.LspApiService = {
         if (!response.ok) {
           console.error("LSP returned error:", result);
           
-          // Handle specific LSPS1 error codes
+          // Handle JSON-RPC error format per LSPS1 spec
           let errorMessage = "";
           if (result.error) {
             // Standard JSON-RPC error
@@ -107,7 +107,6 @@ window.LspApiService = {
                            (result.error.code ? `Error code ${result.error.code}` : `Error ${response.status}: ${response.statusText}`);
             }
           } else {
-            // Fallback for non-standard error responses
             errorMessage = `Error ${response.status}: ${response.statusText}`;
           }
           
@@ -142,7 +141,6 @@ window.LspApiService = {
     }
   },
   
-  // Poll for order status directly from the LSP
   async getOrderStatus(orderId) {
     if (!this.lspUrl || !orderId) {
       console.error("LSP URL and order ID are required for checking order status");
@@ -171,7 +169,7 @@ window.LspApiService = {
           try {
             const errorResult = await response.json();
             
-            // Handle specific LSPS1 error codes
+            // Handle error format per LSPS1 spec
             if (errorResult.error) {
               // JSON-RPC standard error
               if (errorResult.error.code === -32602) {
@@ -186,7 +184,6 @@ window.LspApiService = {
               }
             }
           } catch (e) {
-            // If we can't parse the response, just use the generic error
             console.error("Failed to parse error response:", e);
           }
           
@@ -199,17 +196,15 @@ window.LspApiService = {
         const result = await response.json();
         console.log("Order status from LSP:", result);
         
-        // Check for COMPLETED state first
-        const isCompleted = result.order_state === "COMPLETED";
-        let orderStatus = isCompleted ? "complete" :
-                       result.order_state === "FAILED" ? "failed" :
-                       result.order_state === "CREATED" ? "waiting_for_payment" :
-                       "processing";
+        // Parse order state according to LSPS1 spec
+        const orderStatus = result.order_state === "COMPLETED" ? "complete" :
+                           result.order_state === "FAILED" ? "failed" :
+                           result.order_state === "CREATED" ? "waiting_for_payment" :
+                           "processing";
         
-        // Get payment state information
+        // Get payment state information - strictly according to LSPS1 spec
         let paymentInfo = null;
         if (result.payment && result.payment.bolt11) {
-          // Check for Lightning payment (bolt11)
           const bolt11State = result.payment.bolt11.state?.toUpperCase();
           
           paymentInfo = {
@@ -220,37 +215,22 @@ window.LspApiService = {
             feeSats: result.payment.bolt11.fee_total_sat,
             totalSats: result.payment.bolt11.order_total_sat
           };
-          
-          // Update status based on payment state
-          if (bolt11State === 'EXPECT_PAYMENT') {
-            orderStatus = 'waiting_for_payment';
-          } else if (bolt11State === 'HOLD') {
-            orderStatus = 'payment_received';
-          } else if (bolt11State === 'PAID') {
-            orderStatus = 'processing';
-          } else if (bolt11State === 'REFUNDED' || bolt11State === 'CANCELLED') {
-            orderStatus = 'failed';
-            paymentInfo.refundReason = 'Payment was cancelled or refunded';
-          }
         }
         
-        // Enhanced channel information
+        // Channel information following LSPS1 spec
         let channelInfo = null;
         if (result.channel) {
           channelInfo = {
             fundedAt: result.channel.funded_at,
             fundingOutpoint: result.channel.funding_outpoint,
-            expiresAt: result.channel.expires_at,
-            channelId: result.channel.channel_id,
-            state: result.channel.state
+            expiresAt: result.channel.expires_at
           };
         }
         
-   
         return {
           success: true,
           status: orderStatus,
-          order_state: result.order_state, // Include raw order_state
+          order_state: result.order_state,
           orderId: result.order_id || orderId,
           paymentInfo,
           channelInfo,

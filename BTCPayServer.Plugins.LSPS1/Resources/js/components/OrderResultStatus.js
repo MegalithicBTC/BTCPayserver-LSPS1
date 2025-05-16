@@ -14,44 +14,17 @@ window.OrderResultStatus = {
     let statusDetails = null;
     let invoiceElement = null;
     
-    // Check order states
-    const isCompleted = statusData.order_state === "COMPLETED" || 
-                       statusData.status === "complete" || 
-                       statusData.status === "completed";
-                       
-    const isFailed = statusData.order_state === "FAILED" ||
-                    statusData.status === "failed";
-                    
+    // Check LSPS1 order states
+    const isCompleted = statusData.order_state === "COMPLETED";
+    const isFailed = statusData.order_state === "FAILED";
+    
     // Check if there's an error in the response
     const hasError = !statusData.success || 
-                    (statusData.error && typeof statusData.error === 'string') || 
-                    (statusData.details && statusData.details.error);
+                    (statusData.error && typeof statusData.error === 'string');
 
     // If we have an error, display it
     if (hasError) {
-      // Try to extract the most specific error message
-      let errorMessage = '';
-      
-      if (statusData.error && typeof statusData.error === 'string') {
-        errorMessage = statusData.error;
-      } else if (statusData.details && statusData.details.error) {
-        const error = statusData.details.error;
-        
-        if (error.data && error.data.message) {
-          // Most specific: The detailed error message from the LSP
-          errorMessage = error.data.message;
-          
-          // Add property context if available
-          if (error.data.property) {
-            errorMessage = `${error.data.property}: ${errorMessage}`;
-          }
-        } else if (error.message) {
-          // Generic error message
-          errorMessage = error.message;
-        }
-      }
-      
-      statusMessage = errorMessage || 'An error occurred while processing your request';
+      statusMessage = statusData.error || 'An error occurred while processing your request';
       statusClass = 'text-danger';
       
       statusDetails = React.createElement('div', { className: 'mt-3' },
@@ -69,7 +42,7 @@ window.OrderResultStatus = {
         )
       );
     } else if (isFailed) {
-      statusMessage = `Invoice payment failed because the LSP encountered and error when trying to open the channel. Contact ${window.LSPS1App?.props?.connectedLspName || "the LSP"} for support.`;
+      statusMessage = `Invoice payment failed because the LSP encountered an error when trying to open the channel. Contact ${window.LSPS1App?.props?.connectedLspName || "the LSP"} for support.`;
       statusClass = 'text-danger';
       
       statusDetails = React.createElement('div', { className: 'mt-3' },
@@ -90,21 +63,13 @@ window.OrderResultStatus = {
       statusMessage = '';
       statusClass = 'text-success';
       
-      // Show channel details if available
+      // Show channel details if available using LSPS1 structure
       if (statusData.channelInfo && statusData.channelInfo.fundingOutpoint) {
         const txid = statusData.channelInfo.fundingOutpoint.split(':')[0];
         const vout = statusData.channelInfo.fundingOutpoint.split(':')[1] || '0';
         
-        // Determine if we're on mainnet or testnet based on URL or configuration
-        const isMainnet = window.LSPS1App?.props?.lspUrl?.includes('megalithic.me') || 
-                         !window.LSPS1App?.props?.lspUrl?.includes('mutiny');
-        
-        // Create mempool.space URL for the transaction
-        const mempoolBaseUrl = isMainnet 
-          ? 'https://mempool.space' 
-          : 'https://mutinynet.mempool.space';
-        
-        const mempoolUrl = `${mempoolBaseUrl}/tx/${txid}#vout=${vout}`;
+        // Always use mainnet mempool.space URL
+        const mempoolUrl = `https://mempool.space/tx/${txid}#vout=${vout}`;
         
         statusDetails = React.createElement('div', { className: 'mt-3' },
           React.createElement('p', { className: 'mb-2' }, 
@@ -127,29 +92,8 @@ window.OrderResultStatus = {
           )
         );
       }
-
-      // Show raw channel data from polling if there's no fundingOutpoint
-      else if (statusData.channelData && statusData.channelData.length > 0) {
-        statusDetails = React.createElement('div', { className: 'mt-3' },
-          React.createElement('h6', null, 'Channel Details:'),
-          React.createElement('pre', { 
-            className: 'bg-light p-3 rounded small',
-            style: { maxHeight: '400px', overflow: 'auto' }
-          }, 
-            JSON.stringify(statusData.channelData, null, 2)
-          )
-        );
-      }
-    } else if (statusData.status === 'failed') {
-      statusMessage = statusData.errorMessage || 'Channel creation failed';
-      statusClass = 'text-danger';
-      
-      // Add refund details if available
-      if (statusData.paymentInfo && statusData.paymentInfo.refundReason) {
-        statusDetails = React.createElement('p', { className: 'mt-2 mb-0' }, statusData.paymentInfo.refundReason);
-      }
-    } else if (statusData.status === 'waiting_for_payment' || 
-              (statusData.order_state && statusData.order_state.toUpperCase() === 'CREATED')) {
+    } else if (statusData.order_state === "CREATED") {
+      // Following LSPS1 spec for "CREATED" state
       // Add spinner to the 'Waiting for invoice payment...' message
       statusMessage = React.createElement('span', null,
         React.createElement('i', { 
@@ -159,25 +103,16 @@ window.OrderResultStatus = {
         }),
         'Waiting for invoice payment...'
       );
-      statusClass = 'text-success'; // Changed from 'text-warning' to 'text-success' for more neutral color
+      statusClass = 'text-success';
       
-      // Only show invoice if not completed
+      // Get the invoice from payment.bolt11 per LSPS1 spec
       let invoice = null;
-      
-      // Try to find the invoice in various places in the response
       if (statusData.paymentInfo && statusData.paymentInfo.invoice) {
         invoice = statusData.paymentInfo.invoice;
       } else if (statusData.details && statusData.details.payment && 
                 statusData.details.payment.bolt11 && 
                 statusData.details.payment.bolt11.invoice) {
         invoice = statusData.details.payment.bolt11.invoice;
-      } else if (statusData.payment && statusData.payment.bolt11 && 
-                statusData.payment.bolt11.invoice) {
-        invoice = statusData.payment.bolt11.invoice;
-      } else if (statusData.data && statusData.data.payment && 
-                statusData.data.payment.bolt11 && 
-                statusData.data.payment.bolt11.invoice) {
-        invoice = statusData.data.payment.bolt11.invoice;
       }
       
       // Only render invoice element if not completed
@@ -217,8 +152,7 @@ window.OrderResultStatus = {
       } else {
         console.warn("No invoice found in status data:", statusData);
       }
-    } else if (statusData.status === 'payment_received' || 
-              (statusData.payment?.bolt11?.state === 'HOLD')) {
+    } else if (statusData.payment?.bolt11?.state === 'HOLD') {
       statusMessage = 'Payment received, channel opening in progress...';
       statusClass = 'text-info';
     }
@@ -226,7 +160,7 @@ window.OrderResultStatus = {
     // Calculate the proper alert class - using a more neutral background for waiting_for_payment
     const alertClass = statusClass === 'text-success' && !isCompleted ? 'bg-light border' : 
                       statusClass === 'text-danger' ? 'alert-danger' : 
-                      statusClass === 'text-warning' ? 'bg-light border' : // Changed from 'alert-primary'
+                      statusClass === 'text-warning' ? 'bg-light border' :
                       'alert-info';
     
     // Track whether technical details are visible
@@ -267,52 +201,17 @@ window.OrderResultStatus = {
           }, null, 2)
         )
       ),
-      // Change text color from text-muted to text-white
+      // Show last polled time
       !isFailed && !hasError && React.createElement('div', { className: 'mt-2 d-flex justify-content-between align-items-center' },
         React.createElement('a', {
           href: '#',
-          className: 'text-white small', // Changed from text-muted to text-white
+          className: 'text-muted small',
           onClick: toggleDetails
         }, showDetails ? 'Close detailed response from the LSP' : 'Show detailed response from the LSP'),
-        React.createElement('p', { className: 'text-white small mb-0' }, // Changed from text-muted to text-white
+        React.createElement('p', { className: 'text-muted small mb-0' },
           `Last status check: ${lastPolled.toLocaleTimeString()}`
         )
       )
     );
-  },
-  
-  /**
-   * Renders technical details as a collapsible section
-   * @param {Object} data - The data to show in raw format
-   * @returns {React.Element} - React element with collapsible details
-   */
-  renderRawJson: function(data) {
-    return React.createElement('div', { className: 'mt-3' },
-      React.createElement('details', null,
-        React.createElement('summary', { className: 'small' }, 'Technical Details'),
-        React.createElement('pre', { className: 'mt-2 p-2 bg-light border rounded small' },
-          JSON.stringify(data, null, 2)
-        )
-      )
-    );
-  },
-  
-  /**
-   * Creates a more user-friendly error message
-   * @param {string|Object} error - Error information
-   * @returns {string} - Formatted error message
-   */
-  getErrorMessage: function(error) {
-    if (!error) return "Unknown error";
-    
-    if (typeof error === 'string') {
-      return error;
-    }
-    
-    if (error.message) {
-      return error.message;
-    }
-    
-    return JSON.stringify(error);
   }
 };

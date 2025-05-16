@@ -4,59 +4,37 @@ window.LspManager = {
   lspOptions: null,
   selectedLsp: null,
   
-  init() {
-    console.log("Initializing LSP Manager");
-    
-    // Simple initialization without storage dependency
-    return true;
-  },
-  
-  processOptions() {
-    if (!this.lspInfo) return null;
-    
-    // Process options using LspConfigManager if available
-
-      this.lspOptions = window.LspConfigManager.processChannelOptions(this.lspInfo);
-      
-      // Log updated options
-      console.log("LSP info updated:", this.lspInfo);
-      console.log("LSP options updated:", this.lspOptions);
-
-    
-    // Ensure options object exists
-    this.lspOptions = this.lspOptions || {};
-    
-    // Directly use the values from the LSP response
-    if (this.lspInfo) {
-      // Parse string values to integers for balance fields
-      const minLspBalance = parseInt(this.lspInfo.min_initial_lsp_balance_sat, 10);
-      const maxLspBalance = parseInt(this.lspInfo.max_initial_lsp_balance_sat, 10);
-      
-      // Set values from LSP info directly
-      this.lspOptions.minSats = minLspBalance;
-      this.lspOptions.maxSats = maxLspBalance;
-      this.lspOptions.minChannelSize = minLspBalance;
-      this.lspOptions.maxChannelSize = maxLspBalance;
-      
-      // Set default channel size to 1,000,000 satoshis
-      this.lspOptions.defaultChannelSize = 1000000;
-      
-      // If default size is outside the allowed range, constrain it
-      if (this.lspOptions.defaultChannelSize < minLspBalance) {
-        this.lspOptions.defaultChannelSize = minLspBalance;
-      } else if (this.lspOptions.defaultChannelSize > maxLspBalance) {
-        this.lspOptions.defaultChannelSize = maxLspBalance;
-      }
-    }
-    
-    return this.lspOptions;
-  },
-  
+  // Single updateLspInfo method that handles all the option configuration
   updateLspInfo(lspInfo) {
     if (!lspInfo) return false;
     
     this.lspInfo = lspInfo;
-    this.processOptions();
+    
+    // Initialize options object
+    this.lspOptions = window.LspConfigManager ? 
+      window.LspConfigManager.processChannelOptions(lspInfo) : {};
+    
+    // Ensure we have a valid options object
+    if (!this.lspOptions) this.lspOptions = {};
+    
+    // Parse string values to integers for balance fields
+    const minLspBalance = parseInt(lspInfo.min_initial_lsp_balance_sat, 10) || 150000;
+    const maxLspBalance = parseInt(lspInfo.max_initial_lsp_balance_sat, 10) || 16777215;
+    
+    // Only set these if they're not already set by the LspConfigManager
+    if (!this.lspOptions.minSats) this.lspOptions.minSats = minLspBalance;
+    if (!this.lspOptions.maxSats) this.lspOptions.maxSats = maxLspBalance;
+    if (!this.lspOptions.minChannelSize) this.lspOptions.minChannelSize = minLspBalance;
+    if (!this.lspOptions.maxChannelSize) this.lspOptions.maxChannelSize = maxLspBalance;
+    
+    // Set a reasonable default channel size (1M sats), constrained by min/max bounds
+    if (!this.lspOptions.defaultChannelSize) {
+      const defaultSize = 1000000; // 1M sats
+      this.lspOptions.defaultChannelSize = Math.min(
+        Math.max(defaultSize, minLspBalance), 
+        maxLspBalance
+      );
+    }
     
     return true;
   },

@@ -14,17 +14,15 @@ window.LspConfigManager = {
     
     console.log("Processing LSP channel options from:", lspInfo);
     
-    // Extract min and max channel sizes
+    // Extract min and max channel sizes directly from LSPS1 spec fields
     const minSats = this.getNumberProperty(lspInfo, 'min_initial_client_balance_sat');
     const maxSats = this.getNumberProperty(lspInfo, 'max_initial_client_balance_sat');
-    
-    // Get LSP balance limits
     const minLspBalance = this.getNumberProperty(lspInfo, 'min_initial_lsp_balance_sat');
     const maxLspBalance = this.getNumberProperty(lspInfo, 'max_initial_lsp_balance_sat');
     
     // Use the appropriate min/max values
-    const minChannelSize = minSats || minLspBalance;
-    const maxChannelSize = maxSats || maxLspBalance;
+    const minChannelSize = minSats;
+    const maxChannelSize = maxSats;
     
     // Use 1M sats as default channel size, constrained by min/max
     const defaultSats = Math.min(Math.max(1000000, minChannelSize), maxChannelSize);
@@ -40,7 +38,7 @@ window.LspConfigManager = {
       defaultChannelSize: defaultSats,
       minSats: minChannelSize,
       maxSats: maxChannelSize,
-      instantSwap: !!lspInfo.supports_zero_conf,
+      instantSwap: lspInfo.min_required_channel_confirmations === 0,
       zeroReserve: !!lspInfo.supports_zero_channel_reserve
     };
   },
@@ -65,9 +63,18 @@ window.LspConfigManager = {
    * @returns {number} The extracted number value
    */
   getNumberProperty(obj, key) {
-    if (!obj || obj[key] === undefined || obj[key] === null) return 0;
+    if (!obj || !key) return 0;
     
-    // Handle both string and number formats
-    return typeof obj[key] === 'string' ? parseInt(obj[key], 10) : obj[key];
+    // Get the value, which could be a string or number
+    const value = obj[key];
+    
+    // Parse to number if it's a string, or use as is if it's already a number
+    if (typeof value === 'string') {
+      return parseInt(value, 10) || 0;
+    } else if (typeof value === 'number') {
+      return value;
+    }
+    
+    return 0;
   }
 };
