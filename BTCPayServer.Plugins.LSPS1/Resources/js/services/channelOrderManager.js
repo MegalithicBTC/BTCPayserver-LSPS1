@@ -197,12 +197,12 @@ window.ChannelOrderManager = {
     
     // Set a timeout for invoice payment
     // TODO: Set this to 10 minutes (600000 ms) for production
-    const timeoutDuration = 10000; // 10 seconds for testing
-    console.log(`Setting invoice payment timeout to ${timeoutDuration}ms (TODO: change to 10 minutes in production)`);
+    // const timeoutDuration = 10000; // 10 seconds for testing
+    // console.log(`Setting invoice payment timeout to ${timeoutDuration}ms (TODO: change to 10 minutes in production)`);
     
-    this.invoicePaymentTimeout = setTimeout(() => {
-      this.handleInvoiceTimeout(orderId);
-    }, timeoutDuration);
+    // this.invoicePaymentTimeout = setTimeout(() => {
+    //   this.handleInvoiceTimeout(orderId);
+    // }, timeoutDuration);
     
     return true;
   },
