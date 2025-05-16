@@ -41,7 +41,7 @@ window.OrderResultStatus = {
         )
       );
     } else if (isCompleted) {
-      statusMessage = 'Your channel is opening!';
+      statusMessage = '';
       statusClass = 'text-success';
       
       // Show channel details if available
@@ -104,8 +104,16 @@ window.OrderResultStatus = {
       }
     } else if (statusData.status === 'waiting_for_payment' || 
               (statusData.order_state && statusData.order_state.toUpperCase() === 'CREATED')) {
-      statusMessage = 'Waiting for invoice payment...';
-      statusClass = 'text-warning';
+      // Add spinner to the 'Waiting for invoice payment...' message
+      statusMessage = React.createElement('span', null,
+        React.createElement('i', { 
+          className: 'bi bi-arrow-repeat me-2 spinner-border spinner-border-sm', 
+          role: 'status',
+          'aria-hidden': 'true'
+        }),
+        'Waiting for invoice payment...'
+      );
+      statusClass = 'text-success'; // Changed from 'text-warning' to 'text-success' for more neutral color
       
       // Only show invoice if not completed
       let invoice = null;
@@ -169,20 +177,31 @@ window.OrderResultStatus = {
       statusClass = 'text-info';
     }
     
-    return React.createElement('div', { className: `alert ${statusClass === 'text-success' ? 'alert-success' : statusClass === 'text-danger' ? 'alert-danger' : statusClass === 'text-warning' ? 'alert-warning' : 'alert-info'} mt-3` },
+    // Calculate the proper alert class - using a more neutral background for waiting_for_payment
+    const alertClass = statusClass === 'text-success' && !isCompleted ? 'bg-light border' : 
+                      statusClass === 'text-danger' ? 'alert-danger' : 
+                      statusClass === 'text-warning' ? 'bg-light border' : // Changed from 'alert-primary'
+                      'alert-info';
+    
+    // Track whether technical details are visible
+    const [showDetails, setShowDetails] = React.useState(false);
+    
+    // Toggle function for technical details
+    const toggleDetails = (e) => {
+      e.preventDefault();
+      const detailsSection = document.getElementById('technical-details');
+      if (detailsSection) {
+        const newDisplay = detailsSection.style.display === 'none' ? 'block' : 'none';
+        detailsSection.style.display = newDisplay;
+        setShowDetails(newDisplay === 'block');
+      }
+    };
+    
+    return React.createElement('div', { className: `${alertClass} mt-3 p-3 rounded` },
       React.createElement('div', { className: 'd-flex justify-content-between align-items-start' },
         React.createElement('div', null,
           React.createElement('p', { className: statusDetails ? 'mb-2' : 'mb-0' }, statusMessage)
-        ),
-        !isFailed && React.createElement('button', {
-          className: 'btn btn-sm btn-outline-secondary',
-          onClick: () => {
-            const detailsSection = document.getElementById('technical-details');
-            if (detailsSection) {
-              detailsSection.style.display = detailsSection.style.display === 'none' ? 'block' : 'none';
-            }
-          }
-        }, 'Technical Details')
+        )
       ),
       statusDetails,
       // Only show invoice if not completed and not failed
@@ -202,8 +221,16 @@ window.OrderResultStatus = {
           }, null, 2)
         )
       ),
-      !isFailed && React.createElement('p', { className: 'mt-2 text-muted small' },
-        `Last status check: ${lastPolled.toLocaleTimeString()}`
+      // Change text color from text-muted to text-white
+      !isFailed && React.createElement('div', { className: 'mt-2 d-flex justify-content-between align-items-center' },
+        React.createElement('a', {
+          href: '#',
+          className: 'text-white small', // Changed from text-muted to text-white
+          onClick: toggleDetails
+        }, showDetails ? 'Close LSP Data' : 'Data from the LSP'),
+        React.createElement('p', { className: 'text-white small mb-0' }, // Changed from text-muted to text-white
+          `Last status check: ${lastPolled.toLocaleTimeString()}`
+        )
       )
     );
   },

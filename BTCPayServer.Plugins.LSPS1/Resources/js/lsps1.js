@@ -10,11 +10,7 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       // Initialize managers and services in the correct order
       // First initialize LspManager which doesn't depend on other services
-      if (window.LspManager) {
-        window.LspManager.init();
-      } else {
-        console.error("LspManager is not available");
-      }
+      window.LspManager.init();
       
       // Get the data from the consolidated JSON block
       const dataElement = document.getElementById('lsps1-data');
@@ -27,11 +23,10 @@ document.addEventListener("DOMContentLoaded", () => {
           console.log("Parsed LSPS1 data:", props);
           
           // Initialize LspApiService if lspUrl is available
-          if (props.lspUrl && typeof window.LspApiService !== 'undefined') {
+          if (props.lspUrl) {
             window.LspApiService.init(props.lspUrl);
             console.log("LspApiService initialized with URL:", props.lspUrl);
           } else {
-            // Only log as debug instead of warning for initial load
             console.debug("LspApiService not initialized: URL will be set when user selects an LSP");
           }
           
@@ -42,18 +37,13 @@ document.addEventListener("DOMContentLoaded", () => {
               : props.initialLspInfoJson;
               
             if (lspInfo && Object.keys(lspInfo).length > 0) {
-              // Initialize ChannelOrderManager if all dependencies are available
-              if (typeof window.ChannelOrderManager !== 'undefined' && 
-                  typeof window.LspApiService !== 'undefined') {
-                window.ChannelOrderManager.init(
-                  lspInfo,
-                  props.lspUrl || '',
-                  props.nodePublicKey || ''
-                );
-                console.log("ChannelOrderManager initialized");
-              } else {
-                console.debug("ChannelOrderManager will initialize after user selects an LSP");
-              }
+              // Initialize ChannelOrderManager if we have required info
+              window.ChannelOrderManager.init(
+                lspInfo,
+                props.lspUrl || '',
+                props.nodePublicKey || ''
+              );
+              console.log("ChannelOrderManager initialized");
             }
           }
         } catch (parseError) {

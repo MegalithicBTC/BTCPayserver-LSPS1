@@ -119,21 +119,42 @@ window.LSPS1App = function(props) {
       return null;
     }
     
-    return React.createElement('div', { className: 'form-group mb-4' },
-      React.createElement('label', { htmlFor: 'lsp-selector', className: 'form-label' }, 'Select Lightning Service Provider:'),
-      React.createElement('select', { 
-        id: 'lsp-selector',
-        className: 'form-select', 
-        value: selectedLspSlug,
-        onChange: (e) => {
-          setSelectedLspSlug(e.target.value);
-        }
+    return React.createElement('div', { className: 'mt-2 text-center' },
+      React.createElement('button', { 
+        className: 'd-inline-flex align-items-center btn btn-link fs-6 text-muted p-0', 
+        type: 'button',
+        'data-bs-toggle': 'collapse', 
+        'data-bs-target': '#lspSelectorContent', 
+        'aria-expanded': 'false', 
+        'aria-controls': 'lspSelectorContent'
       }, 
-        props.availableLsps.map(lsp => 
-          React.createElement('option', { 
-            key: lsp.slug, 
-            value: lsp.slug
-          }, lsp.name)
+        React.createElement('span', { className: 'me-1' }, 'Choose Provider'),
+        React.createElement('vc:icon', { symbol: 'caret-down' })
+      ),
+      React.createElement('div', { 
+        className: 'collapse mt-2', 
+        id: 'lspSelectorContent',
+        style: { 
+          maxWidth: '240px',
+          margin: '0 auto'
+        }
+      },
+        React.createElement('div', { className: 'form-group' },
+          React.createElement('select', { 
+            id: 'lsp-selector',
+            className: 'form-select', 
+            value: selectedLspSlug,
+            onChange: (e) => {
+              setSelectedLspSlug(e.target.value);
+            }
+          }, 
+            props.availableLsps.map(lsp => 
+              React.createElement('option', { 
+                key: lsp.slug, 
+                value: lsp.slug
+              }, lsp.name)
+            )
+          )
         )
       )
     );
@@ -156,34 +177,27 @@ window.LSPS1App = function(props) {
     // If user's node is not connected to LSP, show connection button and dropdown
     if (!userNodeIsConnectedToLsp) {
       return React.createElement(React.Fragment, null,
-        renderLspSelectionDropdown(),
-        
         React.createElement('div', { className: 'text-center mb-4' },
           React.createElement('button', {
             className: 'btn btn-primary btn-lg',
             onClick: connectToLsp,
             disabled: fetchingLspInfo
-          }, fetchingLspInfo ? 'Connecting...' : `Connect to ${props.availableLsps.find(l => l.slug === selectedLspSlug)?.name || "Lightning Service Provider"}`),
+          }, fetchingLspInfo ? 'Connecting...' : `Connect to Lightning Service Provider`),
           
           lspErrorMessage && React.createElement('div', {
             className: 'alert alert-danger mt-3'
           }, lspErrorMessage)
-        )
+        ),
+        
+        // Moved renderLspSelectionDropdown() to be after the connect button
+        renderLspSelectionDropdown()
       );
     }
     
-    // If connected to LSP, show channel configuration
+    // If connected to LSP, show channel configuration or order result
     return React.createElement(React.Fragment, null,
-      React.createElement('div', { className: 'alert alert-info mb-4' },
-        React.createElement('strong', null, connectionMessage),
-        React.createElement('p', { className: 'mt-2' }, 
-          "Your node public key: ",
-          React.createElement('code', null, props.nodePublicKey)
-        )
-      ),
-      
-      // Add the channel configuration component here
-      React.createElement(window.ChannelConfiguration, {
+      // Only show channel configuration if we don't have an order result yet
+      !orderResult && React.createElement(window.ChannelConfiguration, {
         channelSize: channelSize,
         setChannelSize: setChannelSize,
         lspInfo: lspInfo,
@@ -205,11 +219,6 @@ window.LSPS1App = function(props) {
       React.createElement(window.LoadingSpinner) : 
       renderContent(),
     
-    // Show simple connection info if node is connected to LSP (without dropdown)
-    props.userHasLightningNode && userNodeIsConnectedToLsp && React.createElement('div', { className: 'connection-footer mt-4' },
-      React.createElement('div', { className: 'alert alert-success' },
-        `Connected to ${connectedLspName}`
-      )
-    )
+   
   );
 };

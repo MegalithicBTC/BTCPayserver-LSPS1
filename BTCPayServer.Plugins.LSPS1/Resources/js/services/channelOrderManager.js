@@ -6,6 +6,7 @@ window.ChannelOrderManager = {
   nodePublicKey: null,
   orderPollingInterval: null,
   currentOrderId: null,
+  invoicePaymentTimeout: null,
   
   init(lspInfo, lspUrl, nodePublicKey) {
     if (!lspInfo) {
@@ -183,7 +184,7 @@ window.ChannelOrderManager = {
     // Store the current order ID for reference
     this.currentOrderId = orderId;
     
-    // Clear any existing polling interval
+    // Clear any existing polling interval and timeout
     this.stopOrderStatusPolling();
     
     // Do an initial check immediately
@@ -194,8 +195,29 @@ window.ChannelOrderManager = {
       this.checkOrderStatus(orderId);
     }, 5000); // Poll every 5 seconds
     
-   
+    // Set a timeout for invoice payment
+    // TODO: Set this to 10 minutes (600000 ms) for production
+    const timeoutDuration = 10000; // 10 seconds for testing
+    console.log(`Setting invoice payment timeout to ${timeoutDuration}ms (TODO: change to 10 minutes in production)`);
+    
+    this.invoicePaymentTimeout = setTimeout(() => {
+      this.handleInvoiceTimeout(orderId);
+    }, timeoutDuration);
+    
     return true;
+  },
+  
+  // Handle invoice payment timeout
+  handleInvoiceTimeout(orderId) {
+    console.log(`Invoice payment timeout reached for order ${orderId}`);
+    
+    // Stop the polling
+    this.stopOrderStatusPolling();
+    
+    // Dispatch a timeout event for UI components
+    document.dispatchEvent(new CustomEvent('invoice-payment-timeout', { 
+      detail: { orderId, message: "Invoice payment timed out" }
+    }));
   },
   
   // Stop polling for order status
@@ -204,6 +226,13 @@ window.ChannelOrderManager = {
       console.log("Stopping order status polling");
       clearInterval(this.orderPollingInterval);
       this.orderPollingInterval = null;
+    }
+    
+    // Clear any invoice payment timeout
+    if (this.invoicePaymentTimeout) {
+      console.log("Clearing invoice payment timeout");
+      clearTimeout(this.invoicePaymentTimeout);
+      this.invoicePaymentTimeout = null;
     }
     
     // Also stop channel polling if we were polling
@@ -243,6 +272,17 @@ window.ChannelOrderManager = {
              status.status === 'failed')) {
           console.log(`Order ${orderId} reached final state (${status.status}), stopping polling`);
           this.stopOrderStatusPolling();
+        }
+        
+        // If payment is received, clear the invoice payment timeout
+        if (status.success && 
+            (status.status === 'payment_received' || 
+             status.payment?.bolt11?.state === 'HOLD')) {
+          console.log("Payment received, clearing invoice payment timeout");
+          if (this.invoicePaymentTimeout) {
+            clearTimeout(this.invoicePaymentTimeout);
+            this.invoicePaymentTimeout = null;
+          }
         }
         
         return status;

@@ -98,7 +98,8 @@ window.OrderResultInvoice = {
           cursor: 'pointer',
           background: 'white',
           padding: '10px',
-          borderRadius: '8px'
+          borderRadius: '8px',
+          border: '1px solid rgba(0,0,0,0.125)' // Add border to QR code
         },
         onClick: copyToClipboard,
         ref: (el) => {
@@ -171,13 +172,13 @@ window.OrderResultInvoice = {
         `${Number(totalSats).toLocaleString()} satoshis`
       ),
       
-      // Copy button
+      // Updated copy button with more prominent styling like BTCPay Server
       React.createElement('button', {
-        className: 'btn btn-primary mb-3',
+        className: 'btn btn-primary btn-lg mb-3',
         type: 'button',
         onClick: copyToClipboard
       }, 
-      React.createElement('i', { className: 'bi bi-clipboard me-1' }),
+      React.createElement('i', { className: 'bi bi-clipboard me-2' }),
       'Copy Invoice')
     );
   }

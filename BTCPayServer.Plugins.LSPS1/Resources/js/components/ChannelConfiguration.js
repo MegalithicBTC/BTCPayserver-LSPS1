@@ -47,6 +47,8 @@ window.ChannelConfiguration = function(configProps) {
   // State for private/public channel toggle - default to public (true)
   const [isPublicChannel, setIsPublicChannel] = React.useState(true);
   const [isGettingPrice, setIsGettingPrice] = React.useState(false);
+  // Add state for showing/hiding advanced options
+  const [showOptions, setShowOptions] = React.useState(false);
   
   // Handle get price button click
   const handleGetPrice = async () => {
@@ -74,42 +76,63 @@ window.ChannelConfiguration = function(configProps) {
   });
   
   return React.createElement('div', { className: 'card mb-4' },
-    React.createElement('div', { className: 'card-header' }, 'Lightning Channel Configuration'),
+    React.createElement('div', { className: 'card-header' }, 'Choose a Channel Size'),
     React.createElement('div', { className: 'card-body' },
+      // Add recommendation note before the slider
+      React.createElement('div', { className: 'text-muted small mb-3' },
+        'We recommend that you open channels of at least 1,000,000 satoshis in size'
+      ),
+      
       React.createElement(window.ChannelSizeSlider, {
         channelSize,
         setChannelSize,
-        options: channelOptions,  // Correct prop name is "options" not "channelOptions"
+        options: channelOptions,
         disabled: isGettingPrice
       }),
       
-      React.createElement('div', { className: 'form-group mb-3 mt-3' },
-        React.createElement('div', { className: 'd-flex align-items-center' },
-          React.createElement('input', {
-            type: 'checkbox',
-            className: 'btcpay-toggle me-3',
-            id: 'channelPrivacyToggle',
-            checked: isPublicChannel,
-            onChange: (e) => setIsPublicChannel(e.target.checked)
-          }),
-          React.createElement('label', { 
-            className: 'form-check-label mb-0', 
-            htmlFor: 'channelPrivacyToggle' 
-          }, isPublicChannel ? 'Public Channel' : 'Private Channel')
-        ),
-        React.createElement('div', { className: 'form-text text-muted small mt-2' },
-          isPublicChannel 
-            ? 'Public channels are visible to the network and can be used for routing payments.'
-            : 'Private channels are only known to you and the LSP, offering better privacy but cannot be used for routing.'
+      // Advanced options link
+      React.createElement('div', { className: 'mt-3 text-center' },
+        React.createElement('button', {
+          className: 'd-inline-flex align-items-center btn btn-link fs-6 text-muted p-0',
+          type: 'button',
+          onClick: () => setShowOptions(!showOptions)
+        },
+          React.createElement('span', { className: 'me-1' }, 'Advanced Options'),
+          React.createElement('vc:icon', { symbol: showOptions ? 'caret-up' : 'caret-down' })
         )
       ),
       
-      React.createElement('p', null, 'Node Public Key: ', 
-        React.createElement('code', { className: 'small' }, nodePublicKey || 'Not available')
+      // Only show options if showOptions is true
+      showOptions && React.createElement('div', { className: 'mt-3 pt-2 border-top' },
+        React.createElement('div', { className: 'form-group mb-3' },
+          React.createElement('div', { className: 'd-flex align-items-center' },
+            React.createElement('input', {
+              type: 'checkbox',
+              className: 'btcpay-toggle me-3',
+              id: 'channelPrivacyToggle',
+              checked: isPublicChannel,
+              onChange: (e) => setIsPublicChannel(e.target.checked)
+            }),
+            React.createElement('label', { 
+              className: 'form-check-label mb-0', 
+              htmlFor: 'channelPrivacyToggle' 
+            }, isPublicChannel ? 'Public Channel' : 'Private Channel')
+          ),
+          React.createElement('div', { className: 'form-text text-muted small mt-2' },
+            isPublicChannel 
+              ? 'Public channels are visible to the network and can be used for routing payments.'
+              : 'Private channels are only known to you and the LSP, offering better privacy but cannot be used for routing.'
+          )
+        )
+      ),
+      
+      // Node public key display - more subtle
+      React.createElement('p', { className: 'text-muted small mt-3' }, `Your Node's Public Key: `, 
+        React.createElement('code', { className: 'text-muted' }, nodePublicKey || 'Not available')
       ),
       
       React.createElement('button', { 
-        className: 'btn btn-primary', 
+        className: 'btn btn-primary mt-3', 
         type: 'button',
         onClick: handleGetPrice,
         disabled: isGettingPrice

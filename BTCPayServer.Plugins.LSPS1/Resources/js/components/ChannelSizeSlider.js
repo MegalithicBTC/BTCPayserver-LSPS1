@@ -51,6 +51,22 @@ window.ChannelSizeSlider = function(props) {
     return num + " sats";
   };
   
+  // Convert satoshis to BTC with clean formatting
+  const satsToBtc = (sats) => {
+    const btcValue = sats / 100000000;
+    
+    // Format with appropriate number of decimals based on magnitude
+    if (btcValue >= 0.1) {
+      return btcValue.toFixed(3);
+    } else if (btcValue >= 0.01) {
+      return btcValue.toFixed(4);
+    } else if (btcValue >= 0.001) {
+      return btcValue.toFixed(5);
+    } else {
+      return btcValue.toFixed(6);
+    }
+  };
+  
   // Handle slider change
   const handleSliderChange = (e) => {
     const newSize = parseInt(e.target.value, 10);
@@ -77,11 +93,13 @@ window.ChannelSizeSlider = function(props) {
         React.createElement('input', {
           type: 'text',
           className: 'form-control',
-          value: displaySize,
+          value: displaySize.toLocaleString(),
           onChange: handleInputChange,
           disabled: disabled
         }),
-        React.createElement('span', { className: 'slider-units' }, 'sats')
+        React.createElement('span', { className: 'slider-units text-muted' }, 
+          `satoshis (${satsToBtc(displaySize)} BTC)`
+        )
       )
     ),
     
@@ -97,12 +115,6 @@ window.ChannelSizeSlider = function(props) {
         onChange: handleSliderChange,
         disabled: disabled
       })
-    ),
-    
-    // Show min and max labels
-    React.createElement('div', { className: 'd-flex justify-content-between mt-1' },
-      React.createElement('small', { className: 'text-muted' }, formatSats(minSats)),
-      React.createElement('small', { className: 'text-muted' }, formatSats(maxSats))
     )
   );
 };
