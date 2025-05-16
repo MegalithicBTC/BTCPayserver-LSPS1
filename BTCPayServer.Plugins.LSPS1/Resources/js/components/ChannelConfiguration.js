@@ -2,31 +2,28 @@
 window.ChannelConfiguration = function(configProps) {
   const { channelSize, setChannelSize, lspInfo, lspUrl, nodePublicKey, setOrderResult } = configProps;
   
-  // Get channel options from LSP info or ChannelOrderManager if available
+  // Get channel options directly from ChannelOrderManager
   const getChannelOptions = () => {
-    // Try to get options from ChannelOrderManager first
     if (window.ChannelOrderManager && window.ChannelOrderManager.options) {
       return window.ChannelOrderManager.options;
     }
     
-    // Fall back to LspConfigManager
-    if (window.LspConfigManager) {
-      return window.LspConfigManager.processChannelOptions(lspInfo);
-    }
-    
-    // Last resort: create basic options object with defaults
-    return {
-      minSats: 100000,
-      maxSats: 16777215,
-      minChannelSize: 100000,
-      maxChannelSize: 16777215,
-      defaultChannelSize: 1000000,
-      feeRatePercent: 0.1
-    };
+    // If not yet initialized in ChannelOrderManager, process directly
+    return window.LspConfigManager.processChannelOptions(lspInfo);
   };
   
   const channelOptions = getChannelOptions();
+  const [errorMessage, setErrorMessage] = React.useState(null);
   
+  // Show error if channel options aren't available
+  React.useEffect(() => {
+    if (!channelOptions) {
+      setErrorMessage("LSP did not provide valid channel configuration. Please try again or contact the LSP administrator.");
+    } else {
+      setErrorMessage(null);
+    }
+  }, [channelOptions]);
+
   // Initialize channel order manager if needed
   React.useEffect(() => {
     if (lspInfo && lspUrl && nodePublicKey) {
@@ -48,8 +45,9 @@ window.ChannelConfiguration = function(configProps) {
   
   // Handle get price button click
   const handleGetPrice = async () => {
-    if (!channelSize || !nodePublicKey) {
+    if (!channelSize || !nodePublicKey || !channelOptions) {
       console.error("Missing required data for getting price");
+      setErrorMessage("Missing required configuration from LSP. Please try again.");
       return;
     }
     
@@ -63,13 +61,10 @@ window.ChannelConfiguration = function(configProps) {
     }
   };
   
-  // Log what values we have for debugging
-  console.log("Channel configuration rendering with:", {
-    channelSize,
-    channelOptions,
-    lspInfo: lspInfo ? Object.keys(lspInfo).length + " props" : "none",
-    nodePublicKey: nodePublicKey ? nodePublicKey.substring(0, 10) + "..." : "none"
-  });
+  // If we don't have valid channel options, show error
+  if (errorMessage) {
+    return React.createElement('div', { className: 'alert alert-danger' }, errorMessage);
+  }
   
   return React.createElement('div', { className: 'card mb-4' },
     React.createElement('div', { className: 'card-header' }, 'Choose a Channel Size'),

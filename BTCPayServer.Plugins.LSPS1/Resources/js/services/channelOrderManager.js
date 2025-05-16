@@ -29,43 +29,13 @@ window.ChannelOrderManager = {
     this.lspUrl = lspUrl;
     this.nodePublicKey = nodePublicKey;
     
-    // Set up default options
-    this.options = {
-      lsp_id: lspInfo.id || '',
-      lsp_fee_amount: 0,
-      channel_expiry: 1008, // Default expiry in blocks (approximately 1 week)
-      announce_channel: true // Default to public channels
-    };
+    // Process channel options directly using LspConfigManager
+    // This handles all the LSPS1 spec fields and calculations
+    this.options = window.LspConfigManager.processChannelOptions(lspInfo);
     
-    // Process options if LspConfigManager is available
-    if (window.LspConfigManager) {
-      const processedOptions = window.LspConfigManager.processChannelOptions(lspInfo);
-      if (processedOptions) {
-        this.options = processedOptions;
-      }
-    } 
-    
-    // Per LSPS1 spec, just use the values directly from lspInfo
-    if (!this.options || (!this.options.minSats && !this.options.maxSats)) {
-      // Use spec fields directly
-      const minClientBalance = parseInt(lspInfo.min_initial_client_balance_sat, 10);
-      const maxClientBalance = parseInt(lspInfo.max_initial_client_balance_sat, 10);
-      const minLspBalance = parseInt(lspInfo.min_initial_lsp_balance_sat, 10);
-      const maxLspBalance = parseInt(lspInfo.max_initial_lsp_balance_sat, 10);
-      
-      this.options = {
-        minChannelSize: minClientBalance,
-        maxChannelSize: maxClientBalance,
-        defaultChannelSize: parseInt(lspInfo.min_channel_balance_sat || 1000000, 10),
-        minSats: minClientBalance,
-        maxSats: maxClientBalance
-      };
-      
-      // Ensure default size is within min/max bounds
-      this.options.defaultChannelSize = Math.min(
-        Math.max(this.options.defaultChannelSize, this.options.minChannelSize), 
-        this.options.maxChannelSize
-      );
+    if (!this.options) {
+      console.error("Failed to process channel options from LSP info");
+      return false;
     }
     
     // Initialize the LSP API Service with the LSP URL
