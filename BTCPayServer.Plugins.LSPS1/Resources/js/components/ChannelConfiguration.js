@@ -10,7 +10,7 @@ window.ChannelConfiguration = function(configProps) {
     }
     
     // Fall back to LspConfigManager
-    if (window.LspConfigManager && typeof window.LspConfigManager.processChannelOptions === 'function') {
+    if (window.LspConfigManager) {
       return window.LspConfigManager.processChannelOptions(lspInfo);
     }
     
@@ -36,11 +36,7 @@ window.ChannelConfiguration = function(configProps) {
         nodePublicKey: nodePublicKey 
       });
       
-      if (typeof window.ChannelOrderManager.init === 'function') {
-        window.ChannelOrderManager.init(lspInfo, lspUrl, nodePublicKey);
-      } else {
-        console.error("ChannelOrderManager.init is not available");
-      }
+      window.ChannelOrderManager.init(lspInfo, lspUrl, nodePublicKey);
     }
   }, [lspInfo, lspUrl, nodePublicKey]);
   

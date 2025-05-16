@@ -7,7 +7,6 @@ window.OrderResult = function(resultProps) {
   const [lastPolled, setLastPolled] = React.useState(new Date());
   const [channelData, setChannelData] = React.useState([]);
   const [showTechnicalDetails, setShowTechnicalDetails] = React.useState(false);
-  const [invoiceTimedOut, setInvoiceTimedOut] = React.useState(false);
   
   // Effect to listen for status updates
   React.useEffect(() => {
@@ -25,27 +24,17 @@ window.OrderResult = function(resultProps) {
       setChannelData(event.detail);
     };
     
-    // Listen for invoice payment timeout events
-    const handleInvoiceTimeout = (event) => {
-      console.log("Invoice payment timeout received:", event.detail);
-      setInvoiceTimedOut(true);
-    };
-    
     document.addEventListener('channels-updated', handleChannelsUpdated);
-    document.addEventListener('invoice-payment-timeout', handleInvoiceTimeout);
     
     // Start polling for order status if we have a successful result with an orderId
     if (orderResult && orderResult.success && orderResult.orderId) {
       console.log("Starting order status polling for order:", orderResult.orderId);
-      if (window.ChannelOrderManager && typeof window.ChannelOrderManager.startOrderStatusPolling === 'function') {
-        window.ChannelOrderManager.startOrderStatusPolling(orderResult.orderId);
-      }
+      window.ChannelOrderManager.startOrderStatusPolling(orderResult.orderId);
     }
     
     return () => {
       document.removeEventListener('order-status-updated', handleStatusUpdate);
       document.removeEventListener('channels-updated', handleChannelsUpdated);
-      document.removeEventListener('invoice-payment-timeout', handleInvoiceTimeout);
     };
   }, [orderResult]);
   
@@ -64,17 +53,15 @@ window.OrderResult = function(resultProps) {
         ...orderStatus,
         channelData: channelData.length > 0 ? channelData : null,
         paymentInfo: orderStatus.paymentInfo || orderResult.paymentInfo,
-        data: orderStatus.data || orderResult.data,
-        invoiceTimedOut: invoiceTimedOut
+        data: orderStatus.data || orderResult.data
       };
     }
     
-    // Otherwise just use the initial result with timeout status
+    // Otherwise just use the initial result
     return {
-      ...orderResult,
-      invoiceTimedOut: invoiceTimedOut
+      ...orderResult
     };
-  }, [orderStatus, orderResult, channelData, invoiceTimedOut]);
+  }, [orderStatus, orderResult, channelData]);
   
   // Handle page refresh for "Start Over Now" button
   const handleStartOver = () => {
@@ -83,9 +70,6 @@ window.OrderResult = function(resultProps) {
   
   // Determine appropriate container class based on result and status
   const containerClass = React.useMemo(() => {
-    // Check if invoice has timed out
-    if (invoiceTimedOut) return 'border border-warning rounded p-3';
-    
     // Check if order has failed
     const isFailed = currentStatusData?.order_state === "FAILED" || 
                     currentStatusData?.status === "failed";
@@ -102,26 +86,16 @@ window.OrderResult = function(resultProps) {
     // Use a more neutral background for invoice section (card with light border instead of alert-primary)
     if (currentStatusData?.status === 'waiting_for_payment') return 'border rounded bg-light p-3';
     return 'card p-3';
-  }, [orderResult.success, currentStatusData, invoiceTimedOut]);
+  }, [orderResult.success, currentStatusData]);
   
   // Check if we're showing an invoice (waiting for payment)
   const isShowingInvoice = React.useMemo(() => {
-    return !invoiceTimedOut && (
-      currentStatusData?.status === 'waiting_for_payment' || 
-      (currentStatusData?.order_state && currentStatusData?.order_state.toUpperCase() === 'CREATED')
-    );
-  }, [currentStatusData, invoiceTimedOut]);
+    return currentStatusData?.status === 'waiting_for_payment' || 
+      (currentStatusData?.order_state && currentStatusData?.order_state.toUpperCase() === 'CREATED');
+  }, [currentStatusData]);
   
   // Determine the heading and message based on status
   const { heading, message } = React.useMemo(() => {
-    // Handle invoice timeout
-    if (invoiceTimedOut) {
-      return {
-        heading: 'Invoice Payment Timed Out',
-        message: 'The invoice payment timed out before payment was received.'
-      };
-    }
-    
     const isFailed = currentStatusData?.order_state === "FAILED" || 
                     currentStatusData?.status === "failed";
                     
@@ -136,7 +110,7 @@ window.OrderResult = function(resultProps) {
     if (!orderResult.success) {
       return {
         heading: 'Error',
-        message: orderResult.message || 'Failed to create order.'
+        message: orderResult.message || 'Failed to get options for channel opening.'
       };
     }
     
@@ -144,31 +118,19 @@ window.OrderResult = function(resultProps) {
       heading: 'Success!',
       message: orderResult.message || 'The LSP is opening your channel.'
     };
-  }, [orderResult, currentStatusData, invoiceTimedOut]);
+  }, [orderResult, currentStatusData]);
   
   return React.createElement('div', { className: containerClass },
-    // Only show the heading/message if we're NOT showing an invoice or if invoice timed out
-    (!isShowingInvoice || invoiceTimedOut) && React.createElement('div', { className: 'd-flex justify-content-between align-items-start' },
+    // Only show the heading/message if we're NOT showing an invoice
+    !isShowingInvoice && React.createElement('div', { className: 'd-flex justify-content-between align-items-start' },
       React.createElement('div', null,
         React.createElement('h5', { className: 'mb-2' }, heading),
         React.createElement('p', { className: 'mb-0' }, message)
       )
     ),
     
-    // Show the timeout message and start over button
-    invoiceTimedOut && React.createElement('div', { className: 'mt-3 text-center' },
-      React.createElement('div', { className: 'alert alert-warning' },
-        React.createElement('strong', null, 'Oops, the invoice timed out'),
-        React.createElement('p', { className: 'mt-2' }, 'The payment was not received within the allocated time.')
-      ),
-      React.createElement('button', {
-        className: 'btn btn-primary mt-2',
-        onClick: handleStartOver
-      }, 'Start Over Now')
-    ),
-    
-    // Show status if we have data and invoice hasn't timed out
-    !invoiceTimedOut && currentStatusData && window.OrderResultStatus ? 
+    // Show status if we have data
+    currentStatusData && window.OrderResultStatus ? 
       window.OrderResultStatus.renderStatus(currentStatusData, lastPolled) : null
   );
 };

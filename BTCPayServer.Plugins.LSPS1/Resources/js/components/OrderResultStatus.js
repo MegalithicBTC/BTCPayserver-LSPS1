@@ -9,7 +9,7 @@ window.OrderResultStatus = {
   renderStatus: function(statusData, lastPolled) {
     if (!statusData) return null;
     
-    let statusMessage = 'Order processing...';
+    let statusMessage = 'Getting channel options...';
     let statusClass = 'text-info';
     let statusDetails = null;
     let invoiceElement = null;
@@ -21,8 +21,54 @@ window.OrderResultStatus = {
                        
     const isFailed = statusData.order_state === "FAILED" ||
                     statusData.status === "failed";
+                    
+    // Check if there's an error in the response
+    const hasError = !statusData.success || 
+                    (statusData.error && typeof statusData.error === 'string') || 
+                    (statusData.details && statusData.details.error);
 
-    if (isFailed) {
+    // If we have an error, display it
+    if (hasError) {
+      // Try to extract the most specific error message
+      let errorMessage = '';
+      
+      if (statusData.error && typeof statusData.error === 'string') {
+        errorMessage = statusData.error;
+      } else if (statusData.details && statusData.details.error) {
+        const error = statusData.details.error;
+        
+        if (error.data && error.data.message) {
+          // Most specific: The detailed error message from the LSP
+          errorMessage = error.data.message;
+          
+          // Add property context if available
+          if (error.data.property) {
+            errorMessage = `${error.data.property}: ${errorMessage}`;
+          }
+        } else if (error.message) {
+          // Generic error message
+          errorMessage = error.message;
+        }
+      }
+      
+      statusMessage = errorMessage || 'An error occurred while processing your request';
+      statusClass = 'text-danger';
+      
+      statusDetails = React.createElement('div', { className: 'mt-3' },
+        React.createElement('pre', { 
+          className: 'bg-light p-3 rounded small',
+          style: { maxHeight: '400px', overflow: 'auto' }
+        }, 
+          JSON.stringify(statusData, null, 2)
+        ),
+        React.createElement('div', { className: 'mt-3 text-center' },
+          React.createElement('button', {
+            className: 'btn btn-primary',
+            onClick: () => window.location.reload()
+          }, 'Try Again')
+        )
+      );
+    } else if (isFailed) {
       statusMessage = `Invoice payment failed because the LSP encountered and error when trying to open the channel. Contact ${window.LSPS1App?.props?.connectedLspName || "the LSP"} for support.`;
       statusClass = 'text-danger';
       
@@ -205,8 +251,8 @@ window.OrderResultStatus = {
       ),
       statusDetails,
       // Only show invoice if not completed and not failed
-      !isCompleted && !isFailed && invoiceElement,
-      !isFailed && React.createElement('div', { 
+      !isCompleted && !isFailed && !hasError && invoiceElement,
+      !isFailed && !hasError && React.createElement('div', { 
         id: 'technical-details',
         className: 'mt-3',
         style: { display: 'none' }
@@ -222,12 +268,12 @@ window.OrderResultStatus = {
         )
       ),
       // Change text color from text-muted to text-white
-      !isFailed && React.createElement('div', { className: 'mt-2 d-flex justify-content-between align-items-center' },
+      !isFailed && !hasError && React.createElement('div', { className: 'mt-2 d-flex justify-content-between align-items-center' },
         React.createElement('a', {
           href: '#',
           className: 'text-white small', // Changed from text-muted to text-white
           onClick: toggleDetails
-        }, showDetails ? 'Close LSP Data' : 'Data from the LSP'),
+        }, showDetails ? 'Close detailed response from the LSP' : 'Show detailed response from the LSP'),
         React.createElement('p', { className: 'text-white small mb-0' }, // Changed from text-muted to text-white
           `Last status check: ${lastPolled.toLocaleTimeString()}`
         )

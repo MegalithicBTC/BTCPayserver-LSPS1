@@ -38,19 +38,17 @@ window.ChannelOrderManager = {
     };
     
     // Process options if LspConfigManager is available
-    if (window.LspConfigManager && typeof window.LspConfigManager.processChannelOptions === 'function') {
-      const processedOptions = window.LspConfigManager.processChannelOptions(lspInfo);
-      if (processedOptions) {
-        this.options = processedOptions;
-        
-        // Ensure processed options have minSats and maxSats for the slider
-        if (!this.options.minSats && this.options.minChannelSize) {
-          this.options.minSats = this.options.minChannelSize;
-        }
-        
-        if (!this.options.maxSats && this.options.maxChannelSize) {
-          this.options.maxSats = this.options.maxChannelSize;
-        }
+    const processedOptions = window.LspConfigManager.processChannelOptions(lspInfo);
+    if (processedOptions) {
+      this.options = processedOptions;
+      
+      // Ensure processed options have minSats and maxSats for the slider
+      if (!this.options.minSats && this.options.minChannelSize) {
+        this.options.minSats = this.options.minChannelSize;
+      }
+      
+      if (!this.options.maxSats && this.options.maxChannelSize) {
+        this.options.maxSats = this.options.maxChannelSize;
       }
     } 
     
@@ -98,12 +96,8 @@ window.ChannelOrderManager = {
     if (this.options.minSats <= 0) this.options.minSats = 150000;
     if (this.options.maxSats <= 0 || this.options.maxSats < this.options.minSats) this.options.maxSats = 16000000;
     
-    // Initialize the LSP API Service with the LSP URL if available
-    if (window.LspApiService && typeof window.LspApiService.init === 'function') {
-      window.LspApiService.init(lspUrl);
-    } else {
-      console.warn("LspApiService not available, some functionality may be limited");
-    }
+    // Initialize the LSP API Service with the LSP URL
+    window.LspApiService.init(lspUrl);
     
     console.log("Channel Order Manager initialized with:", {
       options: this.options,
@@ -124,50 +118,44 @@ window.ChannelOrderManager = {
     try {
       console.log(`Creating channel order: ${channelSize} sats, private: ${isPrivate}`);
       
-      // Try to use LspApiService if available
-      if (window.LspApiService && typeof window.LspApiService.createOrder === 'function') {
-        const response = await window.LspApiService.createOrder(this.nodePublicKey, channelSize, isPrivate);
+      const response = await window.LspApiService.createOrder(this.nodePublicKey, channelSize, isPrivate);
+      
+      if (response.success && response.data) {
+        // Extract invoice and order details from the response
+        const orderId = response.data.order_id;
+        let invoice = null;
+        let paymentInfo = null;
         
-        if (response.success && response.data) {
-          // Extract invoice and order details from the response
-          const orderId = response.data.order_id;
-          let invoice = null;
-          let paymentInfo = null;
-          
-          // Try to find the invoice in the response
-          if (response.data.payment && response.data.payment.bolt11) {
-            const bolt11Data = response.data.payment.bolt11;
-            invoice = bolt11Data.invoice;
-            paymentInfo = {
-              type: 'lightning',
-              state: bolt11Data.state,
-              expiresAt: bolt11Data.expires_at,
-              invoice: bolt11Data.invoice,
-              feeSats: bolt11Data.fee_total_sat,
-              totalSats: bolt11Data.order_total_sat
-            };
-          }
-          
-          // Start polling if we have an order ID
-          if (orderId) {
-            this.startOrderStatusPolling(orderId);
-          }
-          
-          return {
-            success: true,
-            orderId,
-            status: 'waiting_for_payment',
-            message: 'Order created successfully.',
-            paymentInfo,
-            data: response.data
+        // Try to find the invoice in the response
+        if (response.data.payment && response.data.payment.bolt11) {
+          const bolt11Data = response.data.payment.bolt11;
+          invoice = bolt11Data.invoice;
+          paymentInfo = {
+            type: 'lightning',
+            state: bolt11Data.state,
+            expiresAt: bolt11Data.expires_at,
+            invoice: bolt11Data.invoice,
+            feeSats: bolt11Data.fee_total_sat,
+            totalSats: bolt11Data.order_total_sat
           };
         }
         
-        return response;
-      } else {
-        console.error("LspApiService not available for order creation");
-        return { success: false, error: "Channel order service not available" };
+        // Start polling if we have an order ID
+        if (orderId) {
+          this.startOrderStatusPolling(orderId);
+        }
+        
+        return {
+          success: true,
+          orderId,
+          status: 'waiting_for_payment',
+          message: 'Order created successfully.',
+          paymentInfo,
+          data: response.data
+        };
       }
+      
+      return response;
     } catch (error) {
       console.error("Error creating channel order:", error);
       return { success: false, error: error.message || "Unknown error creating channel" };
@@ -195,12 +183,8 @@ window.ChannelOrderManager = {
       this.checkOrderStatus(orderId);
     }, 5000); // Poll every 5 seconds
     
-
-    
     return true;
   },
-  
-
   
   // Stop polling for order status
   stopOrderStatusPolling() {
@@ -233,46 +217,32 @@ window.ChannelOrderManager = {
     try {
       console.log(`Checking status for order ${orderId} at ${new Date().toLocaleTimeString()}`);
       
-      // Try to use LspApiService if available
-      if (window.LspApiService && typeof window.LspApiService.getOrderStatus === 'function') {
-        const status = await window.LspApiService.getOrderStatus(orderId);
-        
-        // Update any OrderResult components via static method
-        if (window.OrderResult && typeof window.OrderResult.updateStatus === 'function') {
-          console.log("Updating OrderResult with status:", status);
-          window.OrderResult.updateStatus(status);
-        } else {
-          console.log("Order status received but OrderResult.updateStatus not available:", status);
-          // Dispatch a custom event as fallback
-          document.dispatchEvent(new CustomEvent('order-status-updated', { detail: status }));
-        }
-        
-        // Automatically stop polling if the order is complete or failed
-        if (status.success && 
-            (status.status === 'complete' || 
-             status.status === 'completed' || 
-             status.status === 'failed')) {
-          console.log(`Order ${orderId} reached final state (${status.status}), stopping polling`);
-          this.stopOrderStatusPolling();
-        }
-        
-        // If payment is received, clear the invoice payment timeout
-        if (status.success && 
-            (status.status === 'payment_received' || 
-             status.payment?.bolt11?.state === 'HOLD')) {
-          console.log("Payment received, clearing invoice payment timeout");
-          if (this.invoicePaymentTimeout) {
-            clearTimeout(this.invoicePaymentTimeout);
-            this.invoicePaymentTimeout = null;
-          }
-        }
-        
-        return status;
-      } else {
-        console.error("LspApiService not available for status polling");
+      const status = await window.LspApiService.getOrderStatus(orderId);
+      
+      // Update any OrderResult components via static method
+      window.OrderResult.updateStatus(status);
+      
+      // Automatically stop polling if the order is complete or failed
+      if (status.success && 
+          (status.status === 'complete' || 
+           status.status === 'completed' || 
+           status.status === 'failed')) {
+        console.log(`Order ${orderId} reached final state (${status.status}), stopping polling`);
         this.stopOrderStatusPolling();
-        return { success: false, error: "Order status service not available" };
       }
+      
+      // If payment is received, clear the invoice payment timeout
+      if (status.success && 
+          (status.status === 'payment_received' || 
+           status.payment?.bolt11?.state === 'HOLD')) {
+        console.log("Payment received, clearing invoice payment timeout");
+        if (this.invoicePaymentTimeout) {
+          clearTimeout(this.invoicePaymentTimeout);
+          this.invoicePaymentTimeout = null;
+        }
+      }
+      
+      return status;
     } catch (error) {
       console.error("Error checking order status:", error);
       return { success: false, error: error.message || "Unknown error checking order status" };

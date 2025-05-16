@@ -3,33 +3,13 @@ window.LSPS1App = function(props) {
   const [loading, setLoading] = React.useState(false);
   const [userNodeIsConnectedToLsp, setUserNodeIsConnectedToLsp] = React.useState(props.userNodeIsConnectedToLsp);
   const [userNodeFailedToConnectToLsp, setUserNodeFailedToConnectToLsp] = React.useState(props.userNodeFailedToConnectToLsp);
-  const [connectionMessage, setConnectionMessage] = React.useState("Your Lightning node is online.");
-  const [connectedLspName, setConnectedLspName] = React.useState(props.connectedLspName);
   const [lspInfo, setLspInfo] = React.useState(props.lspInfo || {});
   const [fetchingLspInfo, setFetchingLspInfo] = React.useState(false);
   const [lspErrorMessage, setLspErrorMessage] = React.useState("");
-  // Add selected LSP state
   const [selectedLspSlug, setSelectedLspSlug] = React.useState(props.selectedLspSlug || 'megalith-lsp');
-  // Add channel size state
   const [channelSize, setChannelSize] = React.useState(1000000); // Default 1M sats
   const [orderResult, setOrderResult] = React.useState(null);
   const [lspUrl, setLspUrl] = React.useState(props.lspUrl || "");
-  
-  // Helper function to process LSP info and extract public keys
-  const processLspInfo = (lspInfo) => {
-    if (!lspInfo || !lspInfo.uris || !Array.isArray(lspInfo.uris) || lspInfo.uris.length === 0) {
-      console.warn("No valid URIs in LSP info");
-      return;
-    }
-    
-    // Just extract and log the public keys, no storage
-    const pubKeys = lspInfo.uris.map(uri => {
-      const parts = uri.split('@');
-      return parts.length > 0 ? parts[0] : null;
-    }).filter(key => key !== null);
-    
-    console.log("LSP public keys from URIs:", pubKeys);
-  };
 
   // Function to get LSP info and connect to the LSP
   const getLspInfo = async () => {
@@ -46,11 +26,6 @@ window.LSPS1App = function(props) {
         setLspInfo(data.lspInfo);
         setUserNodeIsConnectedToLsp(true);
         setUserNodeFailedToConnectToLsp(false);
-        setConnectedLspName(props.availableLsps.find(l => l.slug === selectedLspSlug)?.name || "LSP");
-        setConnectionMessage(`Connected to ${props.availableLsps.find(l => l.slug === selectedLspSlug)?.name || "LSP"}`);
-        
-        // Process LSP info to extract public keys (no storage)
-        processLspInfo(data.lspInfo);
         
         // Make sure we have the lspUrl
         if (!data.lspUrl) {
@@ -63,30 +38,13 @@ window.LSPS1App = function(props) {
         setLspUrl(data.lspUrl);
         
         // Initialize API service with LSP URL
-        if (window.LspApiService) {
-          if (typeof window.LspApiService.init === 'function') {
-            window.LspApiService.init(data.lspUrl);
-            console.log("LspApiService initialized with URL:", data.lspUrl);
-          } else {
-            console.error("LspApiService.init method is not available");
-          }
-        } else {
-          console.error("LspApiService is not available");
-        }
+        window.LspApiService.init(data.lspUrl);
+        console.log("LspApiService initialized with URL:", data.lspUrl);
         
-        // Update LSP info in LspManager (no storage)
-        if (window.LspManager) {
-          if (typeof window.LspManager.updateLspInfo === 'function') {
-            window.LspManager.updateLspInfo(data.lspInfo);
-            console.log("LSP info updated in LspManager");
-          } else {
-            console.error("LspManager.updateLspInfo method is not available");
-          }
-        } else {
-          console.error("LspManager is not available");
-        }
+        // Update LSP info in LspManager
+        window.LspManager.updateLspInfo(data.lspInfo);
+        console.log("LSP info updated in LspManager");
         
-        setLoading(false);
         return true;
       } else {
         console.error("Failed to get LSP info:", data.error);
@@ -189,7 +147,6 @@ window.LSPS1App = function(props) {
           }, lspErrorMessage)
         ),
         
-        // Moved renderLspSelectionDropdown() to be after the connect button
         renderLspSelectionDropdown()
       );
     }
@@ -217,8 +174,6 @@ window.LSPS1App = function(props) {
   return React.createElement('div', { className: 'lsps1-container' },
     loading ? 
       React.createElement(window.LoadingSpinner) : 
-      renderContent(),
-    
-   
+      renderContent()
   );
 };
