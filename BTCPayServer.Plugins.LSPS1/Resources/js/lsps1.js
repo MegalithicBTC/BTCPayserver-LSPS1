@@ -1,8 +1,5 @@
 // Main initialization script for LSPS1 plugin
 
-// Initialize a global flag to track initialization state
-window.lsps1InitComplete = false;
-
 document.addEventListener("DOMContentLoaded", () => {
   const rootElement = document.getElementById('lsps1-root');
 
@@ -22,35 +19,13 @@ document.addEventListener("DOMContentLoaded", () => {
           props = JSON.parse(dataElement.textContent);
           console.log("Parsed LSPS1 data:", props);
           
-          // Initialize LspApiService if lspUrl is available
-          if (props.lspUrl) {
-            window.LspApiService.init(props.lspUrl);
-            console.log("LspApiService initialized with URL:", props.lspUrl);
-          } else {
-            console.debug("LspApiService not initialized: URL will be set when user selects an LSP");
-          }
+          // Note: We don't initialize LspApiService here since the LSP URL will be set
+          // when the user clicks the "Connect to LSP" button
           
-          // Get the LSP info
-          if (props.initialLspInfoJson && props.initialLspInfoJson !== 'null') {
-            const lspInfo = typeof props.initialLspInfoJson === 'string' 
-              ? JSON.parse(props.initialLspInfoJson) 
-              : props.initialLspInfoJson;
-              
-            if (lspInfo && Object.keys(lspInfo).length > 0) {
-              // Initialize ChannelOrderManager if we have required info
-              window.ChannelOrderManager.init(
-                lspInfo,
-                props.lspUrl || '',
-                props.nodePublicKey || ''
-              );
-              console.log("ChannelOrderManager initialized");
-            }
-          }
         } catch (parseError) {
           console.error("Error parsing LSPS1 data:", parseError);
         }
       }
-      
       // Add the CSRF token which we still need to get separately for security reasons
       const xsrfElement = document.getElementById('request-verification-token');
       if (xsrfElement) {
@@ -61,8 +36,6 @@ document.addEventListener("DOMContentLoaded", () => {
       const root = ReactDOM.createRoot(rootElement);
       root.render(React.createElement(window.LSPS1App, props));
       
-      // Mark initialization as complete
-      window.lsps1InitComplete = true;
       console.log("LSPS1 app initialized successfully");
     } catch (error) {
       console.error("Error initializing LSPS1 application:", error);
