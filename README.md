@@ -6,7 +6,7 @@ This plugin is designed for maximum ease-of-use, such that new and existing BTCP
 
 In this application, we have two parties:
 
-THE CLIENT: This is the user running BTCPay on some kind of computer, along with an attached Lightning node. 
+THE CLIENT: This is THE CLIENT running BTCPay on some kind of computer, along with an attached Lightning node. 
 
 THE LSP: This is the service provider who runs an automated service to respond to LSPS1 client requests, issue invoices, and open channels.
  
@@ -44,23 +44,23 @@ At this point THE CLIENT gets to the first page of the plugin. If THE CLIENT has
 
 <img src="BTCPayServer.Plugins.LSPS1/Resources/docs/img/connect-to-provider.png" alt="Connect To Provider" width="500" />
 
-If THE CLIENT has NOT yet attached a Lightning node to his BTCPay server instance, or if we are unable to determine the `public key` of the user's attached Lightning node, then the user will instead see a message here directing him to the `/lightning/BTC` route, in order to set up a Lightning Node.
+If THE CLIENT has NOT yet attached a Lightning node to his BTCPay server instance, or if we are unable to determine the `public key` of THE CLIENT's attached Lightning node, then THE CLIENT will instead see a message here directing him to the `/lightning/BTC` route, in order to set up a Lightning Node.
 
-You will note on this screen that we ask the user to click a button "Connect to Lightning Service Provider". This is for an important reason:  We don't want BTCPay server users who might just be randomly looking at menu options to actually connect to an LSP node: We want the user to affirmatively click this button to show that they are really interested in going down this path.
+You will note on this screen that we ask THE CLIENT to click a button "Connect to Lightning Service Provider". This is for an important reason:  We don't want BTCPay server users who might just be randomly looking at menu options to actually connect to an LSP node: We want THE CLIENT to affirmatively click this button to show that they are really interested in going down this path.
 
 This is because, although not addressed in the LSPS1 spec, there are potential denial-of-service issues with many thousands of nodes at once attempting to connect to the same LSP node. So it's better, in order to improve the reliability of LSPs, that clients don't just open new connections "for no reason."
 
-On this screen, the user can also choose which LSP he wants to acquire a channel from. 
+On this screen, THE CLIENT can also choose which LSP he wants to acquire a channel from. 
 
 ### Choose a Channel Size
 
-When the user clicks "Connect to Lightning Service Provider", this triggers an HTTP fetch operation to the LSP's `get_info` endpoint. (Take a look at the logs in your browser console to see what is going back-and-forth to this endpoint.) Assuming the LSP replies with a JSON object that is compliant with LSPS1, the user then sees:
+When THE CLIENT clicks "Connect to Lightning Service Provider", this triggers an HTTP fetch operation to the LSP's `get_info` endpoint. (Take a look at the logs in your browser console to see what is going back-and-forth to this endpoint.) Assuming THE LSP replies with a JSON object that is compliant with LSPS1, THE CLIENT then sees:
 
 <img src="BTCPayServer.Plugins.LSPS1/Resources/docs/img/choose-a-channel-size.png" alt="Choose A Channel Size" width="500" />
 
 This screen is simple, but it embeds quite a few important assumptions that we should explain.
 
-You will note that we tell the user:
+You will note that we tell THE CLIENT:
 
 >We recommend that you open channels of at least 1,000,000 satoshis in size
 
@@ -69,15 +69,15 @@ A widely-held learned experience on the Lightning network is that opening channe
 For this reason, we:
 
 1. Suggest (and provided a default at) a channel size of 1,000,000 satoshi.
-2. Fully prevent THE CLIENT from requesting a channel size of below 150,000 satoshis, even if the LSP in its `get_info` response allows channel sizes smaller than this. (Most don't do this, but some do.)
+2. Fully prevent THE CLIENT from requesting a channel size of below 150,000 satoshis, even if THE LSP in its `get_info` response allows channel sizes smaller than this. (Most don't do this, but some do.)
 
 If you use the slider, you will see that it doesn't go below `150,000` satoshis, and its upward bound matches the largest channel size that THE LSP supports (as communicated in the `get info` response.)
 
-You will also note on this screen that, although such an option is available in the LSPS1 specification, we DO NOT provide the option for THE CLIENT to request a zero-confirmation channel. This is because all of the node implementations (LND, CLN, LDK-NODE, etc.) require that the user proactively "allow" such channels, and that can be tricky. 
+You will also note on this screen that, although such an option is available in the LSPS1 specification, we DO NOT provide the option for THE CLIENT to request a zero-confirmation channel. This is because all of the node implementations (LND, CLN, LDK-NODE, etc.) require that THE CLIENT proactively "allow" such channels, and that can be tricky.[^1]
 
 #### Advanced Options
 
-By default, THE CLIENT will request a PUBLIC channel from the LSP. By clicking `Advanced Options`, the user can toggle between a PUBLIC and PRIVATE channel. If the user selects a PRIVATE channel, we warn him that he will need to enable "hop hints" when creating invoices with BTCPay.
+By default, THE CLIENT will request a PUBLIC channel from the LSP. By clicking `Advanced Options`, THE CLIENT can toggle between a PUBLIC and PRIVATE channel. If THE CLIENT selects a PRIVATE channel, we warn him that he will need to enable "hop hints" when creating invoices with BTCPay.
 
 #### Node public key
 
@@ -85,14 +85,14 @@ Some BTCPay users may be unsure of how to get their node's public key, so we pro
 
 #### Get Price button
 
-A common question about LSPS1 implementations is "Why can't I see all the prices from all the LSPs at the same time?" And, you see here that we require the user to pick a channel size BEFORE the LSP provides a price quote. The short answer is that generating an invoice is a somewhat "expensive" operation for LSPs, and the LSPS1 spec requires that all "price quotes" are [accompanied by fully valid invoices](https://github.com/lightning/blips/blob/master/blip-0051.md#2-lsps1create_order). Indeed, well-run LSPs will actually have rate-limiting in place to prevent a user from requesting too many invoices, too fast. 
+A common question about LSPS1 implementations is "Why can't I see all the prices from all the LSPs at the same time?" And, you see here that we require THE CLIENT to pick a channel size BEFORE THE LSP provides a price quote. The short answer is that generating an invoice is a somewhat "expensive" operation for LSPs, and the LSPS1 spec requires that all "price quotes" are [accompanied by fully valid invoices](https://github.com/lightning/blips/blob/master/blip-0051.md#2-lsps1create_order). Indeed, well-run LSPs will actually have rate-limiting in place to prevent a user from requesting too many invoices, too fast. 
 
 
 ### Pay invoice to trigger channel opening
 
-After clicking "Get Price", the user sees this screen:
+After clicking "Get Price", THE CLIENT sees this screen:
 
-<img src="BTCPayServer.Plugins.LSPS1/Resources/docs/img/pay-invoice-to-get-channel.png" alt="Choose A Channel Size" width="500" />
+<img src="BTCPayServer.Plugins.LSPS1/Resources/docs/img/pay-invoice-to-get-channel.png" alt="Pay Invoice To Get Channel" width="500" />
 
 Here the THE CLIENT can pay the invoice with any Lightning wallet. THE CLIENT's browser then begins to poll the [get order](https://github.com/lightning/blips/blob/master/blip-0051.md#21-lsps1get_order) endpoint. 
 
@@ -102,8 +102,41 @@ Note that LSPS1 is designed using [hold invoices](https://bitcoinops.org/en/topi
 
 THE CLIENT is polling THE LSP's [get order](https://github.com/lightning/blips/blob/master/blip-0051.md#21-lsps1get_order)  endpoint, and displays an appropriate failure or success message when the `get_order` endpoint produces a relevant result. 
 
+## Issues for future investigation
+
+### Client-side channel data
+
+The LSPS1 specification does not require that the THE CLIENT have any particular access to data about its own node: The entire LSPS1 flow can be accomplished without THE CLIENT looking at its own internal state or list of channels.
+
+It would however be useful for THE CLIENT to have access to this data, because then, BTCPay server could show useful alerts like:
+
+> ⚠️ **No Inbound Capacity**  
+> You have a Lightning Node, but no channel with inbound capacity. Please get a channel from an LSP so you can receive Lightning payments.
+
+...and..
+
+> ⚠️ **Channels Depleted**  
+> Your Lightning Channels are depleted and you can no longer receive payments. Please swap funds out of your channel(s) or get a new channel from an LSP.
+
+This is behavior we wanted to include with this plugin, and indeed, we saw some [sample work by LQWD](https://github.com/lightningriders/BTCPayServerPluginsProd/blob/3517fa40ce48767bb6c285273be9fef66090c8fb/Plugins/BTCPayServer.Plugins.Lqwd/Services/LqwdPluginService.cs#L335) which led to to initially believe that we WOULD be able to get such data through BTCPay server's API. 
+
+Further investigation however has let us to believe that there is currently [no reliable way](https://github.com/Kukks/BTCPayServerPlugins/blob/6761a8f385aab596235975e46dd78e62724c74ea/Plugins/BTCPayServer.Plugins.MicroNode/MicroLightningClient.cs#L262) to get a list of channels from BTCPay server's API. 
+
+Client-side channel data could also help users answer what will likely be a common question: "I paid the invoice to get the channel, I think I got the channel, but where can I see it?"
+
+Currently THE CLIENT would have to open up a separate interface, for example "Ride The Lightning" in order to see the channel that was opened following the successful usage of this plugin.
+
+### Client-side persistence
+
+LSPS1 does NOT require that THE CLIENT perform any kind of long-term persistence of data in order to acquire a channel. It was therefore with some puzzlement that we reviewed [LQWD's plugin](https://github.com/lightningriders/BTCPayServerPluginsProd/tree/3517fa40ce48767bb6c285273be9fef66090c8fb/Plugins/BTCPayServer.Plugins.Lqwd/Migrations), which includes extensive database migrations.
+
+In general, we think it's better to not attempt to persist state to BTCPay Server's database. But a counter-argument could be made: It might be useful for THE CLIENT to be able to see a "list of channels acquired from LSPs", with historical data like the size of the channel. 
+
+That said, this seems lower priority than [Client-side channel data](#client-side-channel-data), which would serve a similar purpose but also most critically provide the actual **balances** available in existing channels.
 
 
+
+[^1]: This is the footnote content.
 
 
 
