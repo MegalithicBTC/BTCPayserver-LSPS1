@@ -6,17 +6,19 @@ This plugin is designed for maximum ease-of-use, such that new and existing BTCP
 
 In this application, we have two parties:
 
-THE CLIENT: This is THE CLIENT running BTCPay on some kind of computer, along with an attached Lightning node. 
+THE CLIENT: This is the BTCPay user, running BTCPay on a local computer or VPS, along with an attached Lightning node. 
 
-THE LSP: This is the service provider who runs an automated service to respond to LSPS1 client requests, issue invoices, and open channels.
+THE LSP: This is the service provider who runs an automated service to respond to LSPS1 client requests, issue invoices, and open channels. This plugin allows for THE CLIENT to select among several LSPs.
+
+### Deviation from LSPS1 Standard
  
-Please note that the LSPS1 standard calls for the communication between THE CLIENT and THE LSP to be [carried over Lightning's Bolt 8 transport layer](https://github.com/lightning/blips/blob/b48e5db6864d1de6e4b6d71a73ad75569cbff20c/blip-0051.md?plain=1#L14).
+LSPS1 calls fo communication between THE CLIENT and THE LSP to be [carried over Lightning's BOLT8 transport layer](https://github.com/lightning/blips/blob/b48e5db6864d1de6e4b6d71a73ad75569cbff20c/blip-0051.md?plain=1#L14).
 
-BOLT8 is more private than HTTPS, and has other advantages, however, the practical difficulties of a BTCPay Server plugin attempting to communicate **through** an attached Lightning node to an external service are daunting:  As we will see in this documentation, BTCPay Server's ability to communicate and manipulate its attached Lightning node are (currently) rudimentary at best, and furthermore, BTCPay Server can be used with many different kinds of Lightning nodes, many of which don't yet have support for ad-hoc BOLT 8 messaging.
+BOLT8 is more private than HTTPs, and has other advantages, however, the practical difficulties of a BTCPay Server plugin attempting to communicate **through** an attached Lightning node to an external service are daunting:  As we will see in this documentation, BTCPay Server's ability to communicate and manipulate its attached Lightning node are (currently) somewhat rudimentary, and furthermore, BTCPay Server can be used with many different kinds of Lightning nodes, many of which don't yet have support for ad-hoc BOLT 8 messaging.
 
-So, for this application, almost all communication between the CLIENT and the THE LSP is carried over HTTPS.
+So, for this application, almost all communication between the CLIENT and the THE LSP is carried over HTTPs.
 
-Besides this caveat, this plugin is designed to comply fully with LSPS1.
+Besides this one caveat, this plugin is designed to comply fully with LSPS1.[^2]
 
 ## Design principles
 
@@ -156,6 +158,7 @@ For example with LND: an LND node must a special configuration value set to rece
 
 For CLN, users have the opportunity [to do battle](https://github.com/voltagecloud/zero-conf-cln) with various third-party plugins which might (or might not) allow them to successful open a zero-confirmation channel.
 
+[^2]: OK, not completely, actually. For one thing: We totally don't allow THE CLIENT to pay for his channel with an on-chain payment. If you care, ask us and we can explain why.
 
 
 
