@@ -8,8 +8,8 @@ window.ChannelConfiguration = function(configProps) {
       return window.ChannelOrderManager.options;
     }
     
-    // If not yet initialized in ChannelOrderManager, process directly
-    return window.LspConfigManager.processChannelOptions(lspInfo);
+    // If not yet initialized in ChannelOrderManager, process directly using LspManager
+    return window.LspManager.processChannelOptions(lspInfo);
   };
   
   const channelOptions = getChannelOptions();

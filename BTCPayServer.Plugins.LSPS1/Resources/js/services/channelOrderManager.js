@@ -29,9 +29,8 @@ window.ChannelOrderManager = {
     this.lspUrl = lspUrl;
     this.nodePublicKey = nodePublicKey;
     
-    // Process channel options directly using LspConfigManager
-    // This handles all the LSPS1 spec fields and calculations
-    this.options = window.LspConfigManager.processChannelOptions(lspInfo);
+    // Process channel options using the combined LspManager 
+    this.options = window.LspManager.processChannelOptions(lspInfo);
     
     if (!this.options) {
       console.error("Failed to process channel options from LSP info");
