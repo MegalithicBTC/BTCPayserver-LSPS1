@@ -117,6 +117,8 @@ namespace BTCPayServer.Plugins.LSPS1.Services
                 if (anySuccessfulConnection)
                 {
                     _logger.LogInformation("Successfully connected to {LspName}", selectedLsp.Name);
+                    // Set the LspInfo in the selectedLsp to avoid the need for a second call
+                    selectedLsp.LspInfo = lspInfo;
                     return (true, $"Successfully connected to {selectedLsp.Name}", selectedLsp);
                 }
                 else
@@ -132,82 +134,6 @@ namespace BTCPayServer.Plugins.LSPS1.Services
             }
         }
 
-        public async Task<LSPS1GetInfoResponse?> GetLspInfoAsync(string storeId, LspProvider lsp)
-        {
-            try
-            {
-                // Step 1 – fetch get_info from the LSP
-                // Now we just append the endpoint name since the URL already contains /v1/
-                var infoUrl = $"{lsp.Url.TrimEnd('/')}/get_info";
-                
-                _logger.LogInformation("Fetching LSPS1 info from {Url}", infoUrl);
-                HttpResponseMessage response;
-                
-                try
-                {
-                    // Add a timeout to the request
-                    var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-                    response = await _http.GetAsync(infoUrl, cts.Token);
-                    
-                    _logger.LogInformation("LSP response status code: {StatusCode}", response.StatusCode);
-                    
-                    if (!response.IsSuccessStatusCode)
-                    {
-                        _logger.LogWarning("LSP returned non-success status code {StatusCode}", response.StatusCode);
-                        return null;
-                    }
-                }
-                catch (HttpRequestException ex)
-                {
-                    _logger.LogWarning(ex, "Failed to connect to LSP at {Url}: {Error}", infoUrl, ex.Message);
-                    return null;
-                }
-                catch (TaskCanceledException ex)
-                {
-                    _logger.LogWarning(ex, "Request to LSP at {Url} timed out", infoUrl);
-                    return null;
-                }
-                
-                var responseContent = await response.Content.ReadAsStringAsync();
-                _logger.LogInformation("LSP response raw content: {Content}", responseContent);
-                
-                try
-                {
-                    var options = new JsonSerializerOptions
-                    {
-                        PropertyNameCaseInsensitive = true
-                    };
-                    var result = JsonSerializer.Deserialize<LSPS1GetInfoResponse>(responseContent, options);
-                    
-                    if (result != null)
-                    {
-                        _logger.LogInformation("Successfully parsed LSP info data");
-                        
-                        // Log some of the data to verify
-                        _logger.LogInformation("LSP URIs: {Uris}", 
-                            result.Uris != null ? string.Join(", ", result.Uris) : "none");
-                        _logger.LogInformation("LSP min balance: {MinBalance}", result.MinInitialClientBalanceSat);
-                        
-                        return result;
-                    }
-                    else
-                    {
-                        _logger.LogWarning("Deserialized LSP info is null");
-                        return null;
-                    }
-                }
-                catch (JsonException ex)
-                {
-                    _logger.LogError(ex, "Error deserializing LSP response: {Error}", ex.Message);
-                    _logger.LogInformation("Raw response content that failed to deserialize: {Content}", responseContent);
-                    return null;
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Unexpected error fetching LSP info for {LspName}: {Error}", lsp.Name, ex.Message);
-                return null;
-            }
-        }
+       
     }
 }

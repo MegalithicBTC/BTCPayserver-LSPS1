@@ -118,7 +118,8 @@ namespace BTCPayServer.Plugins.LSPS1.Controllers
                     return Json(new { success = false, error = result.message });
                 }
                 
-                var lspInfo = await _lsps1Service.GetLspInfoAsync(storeId, result.selectedLsp);
+                // Use the LspInfo property already set in the selectedLsp object by TryConnectToLspAsync
+                var lspInfo = result.selectedLsp.LspInfo;
                 if (lspInfo == null)
                 {
                     return Json(new { success = false, error = "Failed to get LSP info" });

@@ -1,4 +1,5 @@
 using System;
+using BTCPayServer.Plugins.LSPS1.Models;
 
 namespace BTCPayServer.Plugins.LSPS1.Models
 {
@@ -10,6 +11,9 @@ namespace BTCPayServer.Plugins.LSPS1.Models
         public string Name { get; set; } = string.Empty;
         
         public string Url { get; set; } = string.Empty;
+        
+        // Store the LSP info to avoid redundant API calls
+        public LSPS1GetInfoResponse? LspInfo { get; set; }
         
         // You might want to derive the slug from the name if not explicitly set
         public string GetSlug()
