@@ -1,10 +1,10 @@
 # LSPS1 BTCPay Server Plugin
 
-The [LSPS1 (bLIP 51)](https://github.com/lightning/blips/blob/master/blip-0051.md) standard is a user-facing system for  nodes on the Lightning Network to get "inbound capacity", so that they can receive payments.  
+The [LSPS1 (BLIP 51)](https://github.com/lightning/blips/blob/master/blip-0051.md) standard is a user-facing system for nodes on the Lightning Network to get "inbound capacity", so that they can receive payments.  
 
-This plugin is designed to implement the client-side behavior of LSPS1. It's optimizing maximum ease-of-use, and certain choices for the user to try to maximize compatibility across various node implementations.
+This plugin is designed to implement the client-side behavior of LSPS1, while optimizing maximum ease-of-use. We've made certain choices for the user in order to try to prevent footguns and maximize compatibility across various node implementations.
 
-Our goals is that a new or existing BTCPay user could get an inbound channel to an attached or embedded Lightning node in just a few seconds.
+Our goal is that a new or existing BTCPay user could get an inbound channel to an attached or embedded Lightning node in just a few seconds.
 
 In this application, we have two parties:
 
@@ -16,9 +16,9 @@ This plugin allows for THE CLIENT to choose among several LSPs who are offering 
 
 ### Deviation from the LSPS1 Standard
  
-LSPS1 calls for communication between THE CLIENT and THE LSP to be [carried over Lightning's BOLT8 transport layer](https://github.com/lightning/blips/blob/b48e5db6864d1de6e4b6d71a73ad75569cbff20c/blip-0051.md?plain=1#L14).
+LSPS1 calls for communication between THE CLIENT and THE LSP to be [carried over Lightning's BOLT 8 transport layer](https://github.com/lightning/blips/blob/b48e5db6864d1de6e4b6d71a73ad75569cbff20c/blip-0051.md?plain=1#L14).
 
-BOLT8 is more private than HTTPs, and has other advantages, however, there would be serious practical difficulties in implementing BOLT8 communication for BTCPay. 
+BOLT 8 is more private than HTTPS, and has other advantages, however, there would be serious practical difficulties in implementing BOLT 8 communication for BTCPay. 
 
 A BTCPay Server plugin attempting to communicate **through** an attached or embedded Lightning node to an external service would be a very ambitious thing to attempt:  As we will see in this documentation, BTCPay Server's ability to query or manipulate its attached Lightning node is (currently) quite rudimentary.
 
@@ -29,23 +29,23 @@ So: For a plugin to attempt to communicate with an LSP like
 
 ... this would be really, really, complicated, and would leave quite a few opportunities for hard-to-diagnose bugs and edge cases.  
 
-Therefore, for this application, almost all communication between THE CLIENT and the THE LSP is carried over HTTPs. (**Almost** all, because, of course, the actual channel opening negotiation happens via the standard Lightning protocol.)
+Therefore, for this application, almost all communication between THE CLIENT and the THE LSP is carried over HTTPS. (**Almost** all, because, of course, the actual channel opening negotiation happens via the standard Lightning protocol.)
 
 Besides this one caveat, this plugin is designed to comply fully with LSPS1.[^1]
 
 ## Design principles
 
-BTCPay Server is a complex application with several layers of APIs added at various points during in its lifetime. 
+BTCPay Server is a complex application with several layers of APIs added at various points during its lifetime. 
 
 It's also written in a language (C#) which only a small minority of developers have experience with. At the same time, security is extremely important. 
 
 All this adds up (in our view) to a requirement for plugin developers: Only use server-side (C#, dotnet) functionality in your plugin where **absolutely necessary**. The fewer points of contact between your code and BTCPay server's API, the fewer points of failure (or security holes) you should have. 
  
-For this reason, we've tried to push as much of the complexity as possible of this plugin to the client side, to everyone's favorite client-side language: Javascript.
+For this reason, we've tried to push as much of the complexity as possible of this plugin to the client side, to everyone's favorite client-side language: JavaScript.
 
 We rely on C# methods in BTCPay Server for only two purposes:
 1. We validate that THE CLIENT has a Lightning node attached to his/her BTCPay Server instance, and get the `public_key` of this Lightning node.
-2. We ask BTCpay server's attached Lightning node to reach out and "connect" to the LSP's public URI. (This is NOT via http, this happens strictly over the Lightning network.)
+2. We ask BTCpay Server's attached Lightning node to reach out and "connect" to the LSP's public URI. (This is NOT via http, this happens strictly over the Lightning network.)
 
 The code to perform these operations is simple, and we invite you to review it in [LSPS1Controller.cs](BTCPayServer.Plugins.LSPS1/Controllers/LSPS1Controller.cs) and [LightningNodeService.cs](BTCPayServer.Plugins.LSPS1/Services/LightningNodeService.cs).
 
@@ -61,11 +61,11 @@ Following a nice cup of tea, or perhaps a well-earned bong hit, THE CLIENT, runn
 <img src="BTCPayServer.Plugins.LSPS1/Resources/docs/img/get-lightning-channel-menu-button.png" alt="Get Lightning Channel Menu Button" width="250" />
 
 ### Connect to LSP
-At this point THE CLIENT gets to the first page of the plugin. If THE CLIENT has already attached a Lightning node to his BTCPay Server instance, he will see this screen:
+At this point THE CLIENT gets to the first page of the plugin. If THE CLIENT has already attached a Lightning node to their BTCPay Server instance, he will see this screen:
 
 <img src="BTCPayServer.Plugins.LSPS1/Resources/docs/img/connect-to-provider.png" alt="Connect To Provider" width="500" />
 
-If THE CLIENT has NOT yet attached a Lightning node to his BTCPay server instance, or if we are unable to determine the `public key` of THE CLIENT's attached Lightning node, then THE CLIENT will instead see a message here directing him to the `/lightning/BTC` route, in order to set up a Lightning Node.
+If THE CLIENT has NOT yet attached a Lightning node to their BTCPay server instance, or if we are unable to determine the `public key` of THE CLIENT's attached Lightning node, then THE CLIENT will instead see a message here directing him to the `/lightning/BTC` route, in order to set up a Lightning Node.
 
 You will note on this screen that we have a big green button bearing the label "Connect to Lightning Service Provider". This is for an important reason:  We don't want BTCPay server users who might just be randomly looking at menu options to actually connect to an LSP node: We want THE CLIENT to affirmatively click this button to show that they are really interested in going down this path.
 
@@ -75,7 +75,7 @@ On this screen, THE CLIENT can also choose which LSP he wants to acquire a chann
 
 ### Choose a Channel Size
 
-When THE CLIENT clicks "Connect to Lightning Service Provider" (the big green button), this triggers an HTTPs GET operation to the LSP's `get_info` endpoint. (Take a look at the logs in your browser console to see what is going back-and-forth to this endpoint.) Assuming THE LSP replies with a JSON object that is compliant with LSPS1, THE CLIENT then sees:
+When THE CLIENT clicks "Connect to Lightning Service Provider" (the big green button), this triggers an HTTPS GET operation to the LSP's `get_info` endpoint. (Take a look at the logs in your browser console to see what is going back-and-forth to this endpoint.) Assuming THE LSP replies with a JSON object that is compliant with LSPS1, THE CLIENT then sees:
 
 <img src="BTCPayServer.Plugins.LSPS1/Resources/docs/img/choose-a-channel-size.png" alt="Choose A Channel Size" width="500" />
 
@@ -143,7 +143,7 @@ Typically, entites who are developing BTCPay server plugins are encouraged to us
 
 In theory, this is a great idea, but, after some confusion about the issue, we realized that there would be no practical way to use or test THIS plugin on regtest.
 
-This plugin is wholly reliant on external services provided by THE LSP, accessible over HTTPs.  Theoretically you could replicate THE LSP locally, but then you would have to run your own server-side LSP service, and that would be very, very complicated, and leave little remaining time for smoking joints and going on bike rides, or similar.  
+This plugin is wholly reliant on external services provided by THE LSP, accessible over HTTPS.  Theoretically you could replicate THE LSP locally, but then you would have to run your own server-side LSP service, and that would be very, very complicated, and leave little remaining time for smoking joints and going on bike rides, or similar.  
 
 Therefore, unless anyone else has a bright idea, our best suggestion is to test this plugin with a Docker Compose file like [the one we use](https://github.com/MegalithicBTC/btcpayserver-docker/blob/master/docker-compose-ubuntu-caddy.yml) -- this shows the major services all running on Mainnet.
 
@@ -157,7 +157,7 @@ It would also be possible to modify the plugin to allow THE CLIENT to choose bet
 
 The LSPS1 specification does not require that the THE CLIENT have any particular access to data about its own node: The entire LSPS1 flow can be accomplished without THE CLIENT looking at its own internal state or list of channels. If this paragraph makes no sense to you: We're just saying that LSPS1 was carefully crafted to be fairly lightweight for the client.
 
-It would however **be kind of useful** for THE CLIENT to have access to data about his own node, because then, BTCPay server could show useful alerts like:
+It would however **be kind of useful** for THE CLIENT to have access to data about their own node, because then, BTCPay server could show useful alerts like:
 
 > ⚠️ **No Inbound Capacity**  
 > You have a Lightning Node, but no channel with inbound capacity. Please get a channel from an LSP so you can receive Lightning payments.
@@ -167,13 +167,13 @@ It would however **be kind of useful** for THE CLIENT to have access to data abo
 > ⚠️ **Channels Depleted**  
 > Your Lightning Channels are depleted and you can no longer receive payments. Please swap funds out of your channel(s) or get a new channel from an LSP.
 
-This is behavior we wanted to include with this plugin, and indeed, we saw some [sample work by LQWD](https://github.com/lightningriders/BTCPayServerPluginsProd/blob/3517fa40ce48767bb6c285273be9fef66090c8fb/Plugins/BTCPayServer.Plugins.Lqwd/Services/LqwdPluginService.cs#L335) which led to to initially believe that we WOULD be able to get such data through BTCPay server's API. 
+This is behavior we wanted to include with this plugin, and indeed, we saw some [sample work by LQWD](https://github.com/lightningriders/BTCPayServerPluginsProd/blob/3517fa40ce48767bb6c285273be9fef66090c8fb/Plugins/BTCPayServer.Plugins.Lqwd/Services/LqwdPluginService.cs#L335) which led us to initially believe that we WOULD be able to get such data through BTCPay server's API. 
 
 Further investigation however has let us to believe that there is currently [no reliable way](https://github.com/Kukks/BTCPayServerPlugins/blob/6761a8f385aab596235975e46dd78e62724c74ea/Plugins/BTCPayServer.Plugins.MicroNode/MicroLightningClient.cs#L262) to get a list of channels from BTCPay server's API. 
 
 But, daring to dream: Client-side channel data could also help users answer what will likely be a common question: "I paid the invoice to get the channel, I think I got the channel, but where can I see it?"
 
-Currently THE CLIENT has to know, that, if we wants to see his freshly opened channel, he needs to open a separate interface, for example "Ride The Lightning", in order to see the channel that was opened following the successful usage of this plugin.
+Currently THE CLIENT has to know, that, if we wants to see their freshly opened channel, he needs to open a separate interface, for example "Ride The Lightning", in order to see the channel that was opened following the successful usage of this plugin.
 
 ### Client-side persistence
 
