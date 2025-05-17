@@ -2,38 +2,50 @@
 
 The [LSPS1 (bLIP 51)](https://github.com/lightning/blips/blob/master/blip-0051.md) standard is a user-facing system for  nodes on the Lightning Network to get "inbound capacity", so that they can receive payments.  
 
-This plugin is designed to implement the client-side of LSPS1, optimizing maximum ease-of-use, such that new and existing BTCPay users could get an inbound channel to their attached or embedded Lightning node in just a few seconds.
+This plugin is designed to implement the client-side behavior of LSPS1. It's optimizing maximum ease-of-use, and certain choices for the user to try to maximize compatibility across various node implementations.
+
+Our goals is that a new or existing BTCPay user could get an inbound channel to an attached or embedded Lightning node in just a few seconds.
 
 In this application, we have two parties:
 
-THE CLIENT: This is the BTCPay user, running BTCPay on a local computer or VPS, along with an attached Lightning node. 
+THE CLIENT: This is the BTCPay user, running BTCPay on a local computer or VPS, along with an attached or embedded Lightning node. 
 
-THE LSP: This is the service provider who runs an automated service to respond to LSPS1 client requests, issue invoices, and open channels. This plugin allows for THE CLIENT to select among several LSPs.
+THE LSP: This is the service provider who runs an HTTP server which listens for LSPS1 client requests, generates invoices, and open channels. 
 
-### Deviation from LSPS1 Standard
+This plugin allows for THE CLIENT to choose among several LSPs who are offering LSPS1-compliant services. 
+
+### Deviation from the LSPS1 Standard
  
-LSPS1 calls fo communication between THE CLIENT and THE LSP to be [carried over Lightning's BOLT8 transport layer](https://github.com/lightning/blips/blob/b48e5db6864d1de6e4b6d71a73ad75569cbff20c/blip-0051.md?plain=1#L14).
+LSPS1 calls for communication between THE CLIENT and THE LSP to be [carried over Lightning's BOLT8 transport layer](https://github.com/lightning/blips/blob/b48e5db6864d1de6e4b6d71a73ad75569cbff20c/blip-0051.md?plain=1#L14).
 
-BOLT8 is more private than HTTPs, and has other advantages, however, the practical difficulties of a BTCPay Server plugin attempting to communicate **through** an attached Lightning node to an external service are daunting:  As we will see in this documentation, BTCPay Server's ability to query or manipulate its attached Lightning node are (currently) somewhat rudimentary.
+BOLT8 is more private than HTTPs, and has other advantages, however, there would be serious practical difficulties in implementing BOLT8 communication for BTCPay. 
 
-Furthermore: BTCPay Server can be used with many **different** kinds of Lightning node, many of which don't yet have support for ad-hoc BOLT 8 messaging.  For a plugin to attempt to communicate with an LSP like 
-`Client --> BTCPay Server --> Lightning Node (of any kind) --> LSP`...
+A BTCPay Server plugin attempting to communicate **through** an attached or embedded Lightning node to an external service would be a very ambitious thing to attempt:  As we will see in this documentation, BTCPay Server's ability to query or manipulate its attached Lightning node is (currently) quite rudimentary.
 
-... this would be really, really complicated. 
+Furthermore: BTCPay Server can be used with many **different** kinds of Lightning nodes, many of which don't yet have support for ad-hoc BOLT 8 messaging.  
 
-So, for this application, almost all communication between the CLIENT and the THE LSP is carried over HTTPs.
+So: For a plugin to attempt to communicate with an LSP like 
+`Client --> BTCPay Server --> Lightning Node --> LSP`...
 
-Besides this one caveat, this plugin is designed to comply fully with LSPS1.[^2]
+... this would be really, really, complicated, and would leave quite a few opportunities for hard-to-diagnose bugs and edge cases.  
+
+Therefore, for this application, almost all communication between THE CLIENT and the THE LSP is carried over HTTPs. (**Almost** all, because, of course, the actual channel opening negotiation happens via the standard Lightning protocol.)
+
+Besides this one caveat, this plugin is designed to comply fully with LSPS1.[^1]
 
 ## Design principles
 
-BTCPay Server is a complex application with several layers of APIs added at various points during in its lifetime.  It's also written in a language (C#) that only a small minority of developers have experience with. At the same time, security is extremely important. All this adds up to a requirement for plugin developers: Only use server-side (C#, dotnet) functionality in your plugin where absolutely necessary.
+BTCPay Server is a complex application with several layers of APIs added at various points during in its lifetime. 
+
+It's also written in a language (C#) which only a small minority of developers have experience with. At the same time, security is extremely important. 
+
+All this adds up (in our view) to a requirement for plugin developers: Only use server-side (C#, dotnet) functionality in your plugin where **absolutely necessary**. The fewer points of contact between your code and BTCPay server's API, the fewer points of failure (or security holes) you should have. 
  
-For this reason, we've tried to push as much of the complexity as possible of this plugin to the client side, in Javascript.
+For this reason, we've tried to push as much of the complexity as possible of this plugin to the client side, to everyone's favorite client-side language: Javascript.
 
 We rely on C# methods in BTCPay Server for only two purposes:
-1. Validate that THE CLIENT has a Lightning node attached to his/her BTCPay Server instance, and get the `public_key` of this Lightning node.
-2. Connect to the public URI of the node provided by THE LSP.
+1. We validate that THE CLIENT has a Lightning node attached to his/her BTCPay Server instance, and get the `public_key` of this Lightning node.
+2. We ask BTCpay server's attached Lightning node to reach out and "connect" to the public URI of the node provided by THE LSP.
 
 The code to perform these operations can be reviewed in [LSPS1Controller.cs](BTCPayServer.Plugins.LSPS1/Controllers/LSPS1Controller.cs) and [LightningNodeService.cs](BTCPayServer.Plugins.LSPS1/Services/LightningNodeService.cs).
 
@@ -80,7 +92,7 @@ For this reason, we:
 
 If you use the slider, you will see that it doesn't go below `150,000` satoshis, and its upward bound matches the largest channel size that THE LSP supports (as communicated in the `get info` response.)
 
-You will also note on this screen that, although such an option is available in the LSPS1 specification, we DO NOT provide the option for THE CLIENT to request a zero-confirmation channel. This is because all of the node implementations (LND, CLN, LDK-NODE, etc.) require that THE CLIENT proactively "allow" such channels, and that can be tricky.[^1]
+You will also note on this screen that, although such an option is available in the LSPS1 specification, we DO NOT provide the option for THE CLIENT to request a zero-confirmation channel. This is because all of the node implementations (LND, CLN, LDK-NODE, etc.) require that THE CLIENT proactively "allow" such channels, and that can be tricky.[^2]
 
 #### Advanced Options
 
@@ -156,14 +168,16 @@ That said, this seems lower priority than [Client-side channel data](#client-sid
 
 ### Footnotes
 
-[^1]: Accepting zero-confirmation channels has security implications for the RECEIVER of the channel.  For this reason, all of the node implementations require special settings to allow inbound zero-confirmation channels.
+[^1]: Well... compliant, but we don't implement all features.  For one thing: We totally don't allow THE CLIENT to pay for his/her channel with an on-chain payment. If you care, ask us and we can explain why. There are both security and UX issues with onchain payments which make Lightning payments for channel openings a lot better.
+
+[^2]: Accepting zero-confirmation channels has security implications for the RECEIVER of the channel.  For this reason, all of the node implementations require special settings to allow inbound zero-confirmation channels.
 
 For example with LND: an LND node must a special configuration value set to receive zero-conf channels, and it must additionally have a subscription CONSTANTLY RUNNING called a [channel acceptor](https://lightning.engineering/api-docs/api/lnd/lightning/channel-acceptor/), which basically intercepts inbound channel requests and returns "yes" or "no" if the inbound channel requests should be "allowed" to be zero-conf. This script has the unpleasant property that, if the backing LND node has a hiccup of some kind, the subscription will just quietly die without much notice ... and an LND node in "channel acceptor" mode will actually refuse ALL inbound channel requests if it sees that an "acceptor" subscription is NOT running. This can be not-so-fun.
 
 
 For CLN, users have the opportunity [to do battle](https://github.com/voltagecloud/zero-conf-cln) with various third-party plugins which might (or might not) allow them to successful open a zero-confirmation channel.
 
-[^2]: OK, not completely, actually. For one thing: We totally don't allow THE CLIENT to pay for his channel with an on-chain payment. If you care, ask us and we can explain why.
+
 
 
 
