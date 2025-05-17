@@ -98,13 +98,16 @@ namespace BTCPayServer.Plugins.LSPS1.Controllers
             // Serialize the data for the client
             ViewBag.ClientDataJson = JsonSerializer.Serialize(clientData, new JsonSerializerOptions 
             { 
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                // Don't use PropertyNamingPolicy to preserve original property names (snake_case)
+                PropertyNamingPolicy = null,
                 WriteIndented = false
             });
             
             return View(vm);
         }
         
+        // Old endpoint commented out since JavaScript now fetches LSP info directly
+        /*
         [HttpGet("get-lsp-info")]
         public async Task<IActionResult> GetLspInfo(string storeId, [FromQuery] string? lspSlug = null)
         {
@@ -125,13 +128,63 @@ namespace BTCPayServer.Plugins.LSPS1.Controllers
                     return Json(new { success = false, error = "Failed to get LSP info" });
                 }
                 
-                return Json(new { success = true, lspInfo, lspUrl = result.selectedLsp.Url });
+                // Configure Json serialization to prevent camelCase conversion
+                return new JsonResult(new { success = true, lspInfo, lspUrl = result.selectedLsp.Url }, 
+                    new JsonSerializerOptions { PropertyNamingPolicy = null });
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting LSP info for store {StoreId}: {Error}", storeId, ex.Message);
                 return Json(new { success = false, error = ex.Message });
             }
+        }
+        */
+        
+        [HttpPost("connect-node")]
+        public async Task<IActionResult> ConnectNode(string storeId, [FromBody] ConnectNodeRequest request)
+        {
+            if (request == null || string.IsNullOrEmpty(request.Uri))
+            {
+                return BadRequest(new { success = false, error = "No node URI provided" });
+            }
+
+            try
+            {
+                _logger.LogInformation("Connecting node for store {StoreId} to URI {Uri}", storeId, request.Uri);
+                
+                // Get a store instance to use for connecting
+                var store = await _lightningNodeService.GetStore(storeId);
+                if (store == null)
+                {
+                    _logger.LogWarning("Store {StoreId} not found", storeId);
+                    return NotFound(new { success = false, error = "Store not found" });
+                }
+                
+                // Attempt to connect to the node
+                bool success = await _lightningNodeService.ConnectToNode(store, request.Uri);
+                
+                if (success)
+                {
+                    _logger.LogInformation("Successfully connected to node {Uri} for store {StoreId}", request.Uri, storeId);
+                    return Json(new { success = true });
+                }
+                else
+                {
+                    _logger.LogWarning("Failed to connect to node {Uri} for store {StoreId}", request.Uri, storeId);
+                    return Json(new { success = false, error = $"Failed to connect to {request.Uri}" });
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error connecting to node for store {StoreId}: {Error}", storeId, ex.Message);
+                return Json(new { success = false, error = ex.Message });
+            }
+        }
+        
+        public class ConnectNodeRequest
+        {
+            public string Uri { get; set; } = string.Empty;
+            public string LspSlug { get; set; } = string.Empty;
         }
         
         public class PluginPageViewModel
@@ -148,7 +201,7 @@ namespace BTCPayServer.Plugins.LSPS1.Controllers
             
             // Serialized version for JavaScript
             public string LspInfoJson => LspInfo != null 
-                ? JsonSerializer.Serialize(LspInfo) 
+                ? JsonSerializer.Serialize(LspInfo, new JsonSerializerOptions { PropertyNamingPolicy = null }) 
                 : "null";
         }
     }

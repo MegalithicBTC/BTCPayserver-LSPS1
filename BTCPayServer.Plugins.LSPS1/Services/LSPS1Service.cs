@@ -27,6 +27,8 @@ namespace BTCPayServer.Plugins.LSPS1.Services
             _lightningNodeService = lightningNodeService;
         }
 
+        // Commented out since JavaScript now handles fetching LSP info directly
+        /*
         public async Task<(bool success, string message, LspProvider? selectedLsp)> TryConnectToLspAsync(string storeId, string? lspSlug)
         {
             try
@@ -133,6 +135,7 @@ namespace BTCPayServer.Plugins.LSPS1.Services
                 return (false, $"Error: {ex.Message}", null);
             }
         }
+        */
 
        
     }

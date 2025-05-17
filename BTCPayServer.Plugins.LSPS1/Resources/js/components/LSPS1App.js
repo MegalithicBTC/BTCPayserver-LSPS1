@@ -11,64 +11,110 @@ window.LSPS1App = function(props) {
   const [orderResult, setOrderResult] = React.useState(null);
   const [lspUrl, setLspUrl] = React.useState(props.lspUrl || "");
 
-  // Function to get LSP info and connect to the LSP
-  const getLspInfo = async () => {
+  // Get LSP URL from available LSPs based on selected slug
+  const getLspUrlFromSlug = (slug) => {
+    const lsp = props.availableLsps?.find(lsp => lsp.slug === slug);
+    return lsp?.url || "";
+  };
+
+  // Function to directly get LSP info from the LSP endpoint
+  const getLspInfoDirectly = async () => {
     try {
       setFetchingLspInfo(true);
       setLspErrorMessage("");
       
-      console.log(`Getting LSP info for ${selectedLspSlug}`);
-      const response = await fetch(`/stores/${props.storeId}/plugins/lsps1/get-lsp-info?lspSlug=${selectedLspSlug}`);
-      const data = await response.json();
+      // Get URL for the selected LSP
+      const lspUrl = getLspUrlFromSlug(selectedLspSlug);
+      if (!lspUrl) {
+        throw new Error(`No URL found for LSP: ${selectedLspSlug}`);
+      }
       
-      if (data.success && data.lspInfo) {
-        console.log("Successfully retrieved LSP info:", data.lspInfo);
-        setLspInfo(data.lspInfo);
-        setUserNodeIsConnectedToLsp(true);
-        setUserNodeFailedToConnectToLsp(false);
+      console.log(`Getting LSP info directly from ${selectedLspSlug} at ${lspUrl}`);
+      
+      // Use LspManager to fetch LSP info directly
+      const result = await window.LspManager.fetchLspInfoDirectly(lspUrl);
+      
+      if (result.success && result.lspInfo) {
+        console.log("Successfully retrieved LSP info:", result.lspInfo);
         
-        // Make sure we have the lspUrl
-        if (!data.lspUrl) {
-          console.error("LSP URL is missing in response");
-          setLspErrorMessage("LSP URL is missing. Please try again.");
-          return false;
+        // Store LSP info
+        setLspInfo(result.lspInfo);
+        setLspUrl(lspUrl);
+        
+        // Use the first URI from the LSP info to connect to the node
+        const firstUri = window.LspManager.getFirstUri();
+        if (!firstUri) {
+          throw new Error("No URIs found in LSP info");
         }
         
-        // Save the LSP URL for the channel configuration
-        setLspUrl(data.lspUrl);
+        // Connect to the node via the C# endpoint
+        const connectResult = await connectNodeViaBackend(firstUri, selectedLspSlug);
         
-        // Initialize API service with LSP URL
-        window.LspApiService.init(data.lspUrl);
-        console.log("LspApiService initialized with URL:", data.lspUrl);
-        
-        // Update LSP info in LspManager
-        window.LspManager.updateLspInfo(data.lspInfo);
-        console.log("LSP info updated in LspManager");
-        
-        return true;
+        if (connectResult.success) {
+          // Successfully connected to node
+          setUserNodeIsConnectedToLsp(true);
+          setUserNodeFailedToConnectToLsp(false);
+          
+          // Initialize API service with LSP URL
+          window.LspApiService.init(lspUrl);
+          console.log("LspApiService initialized with URL:", lspUrl);
+          
+          return true;
+        } else {
+          // Failed to connect to node
+          throw new Error(connectResult.error || "Failed to connect to LSP node");
+        }
       } else {
-        console.error("Failed to get LSP info:", data.error);
-        setUserNodeIsConnectedToLsp(false);
-        setUserNodeFailedToConnectToLsp(true);
-        setLspErrorMessage(data.error || "Something went wrong when we tried to get info from the LSP. You could try again or choose a diferrent LSP.");
-        return false;
+        // Failed to get LSP info
+        throw new Error(result.error || "Failed to get info from the LSP");
       }
     } catch (error) {
-      console.error("Error getting LSP info:", error);
+      console.error("Error in LSP connection process:", error);
       setUserNodeIsConnectedToLsp(false);
       setUserNodeFailedToConnectToLsp(true);
-      setLspErrorMessage("Error connecting to LSP. Please try again.");
+      setLspErrorMessage(error.message || "Something went wrong when connecting to the LSP. You could try again or choose a different LSP.");
       return false;
     } finally {
       setFetchingLspInfo(false);
       setLoading(false);
     }
   };
+  
+  // Function to connect to node via backend
+  const connectNodeViaBackend = async (uri, lspSlug) => {
+    try {
+      console.log(`Connecting to node with URI: ${uri}`);
+      
+      const response = await fetch(`/stores/${props.storeId}/plugins/lsps1/connect-node`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          uri: uri,
+          lspSlug: lspSlug
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        console.log("Successfully connected to node");
+        return { success: true };
+      } else {
+        console.error("Failed to connect to node:", data.error);
+        return { success: false, error: data.error };
+      }
+    } catch (error) {
+      console.error("Error connecting to node:", error);
+      return { success: false, error: error.message || "Error connecting to node" };
+    }
+  };
 
   // For the "Connect to LSP" button
   const connectToLsp = () => {
     setLoading(true);
-    getLspInfo();
+    getLspInfoDirectly();
   };
 
   // Render LSP selection dropdown

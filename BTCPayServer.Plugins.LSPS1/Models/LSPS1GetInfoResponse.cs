@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace BTCPayServer.Plugins.LSPS1.Models;
 
+// This class uses snake_case for JSON property names to match the LSPS1 spec exactly
 public class LSPS1GetInfoResponse
 {
     [JsonPropertyName("uris")]

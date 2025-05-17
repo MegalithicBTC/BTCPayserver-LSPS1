@@ -32,6 +32,13 @@ window.LspManager = {
     return this.lspInfo;
   },
   
+  // Get first URI from LSP info for node connection
+  getFirstUri() {
+    return this.lspInfo && this.lspInfo.uris && this.lspInfo.uris.length > 0 
+      ? this.lspInfo.uris[0] 
+      : null;
+  },
+  
   // Set selected LSP slug
   setSelectedLsp(lspSlug) {
     this.selectedLsp = lspSlug;
@@ -41,6 +48,50 @@ window.LspManager = {
   // Get selected LSP slug
   getSelectedLsp() {
     return this.selectedLsp;
+  },
+  
+  /**
+   * Directly fetch LSP info from the LSP endpoint
+   * @param {string} lspUrl - The URL of the LSP endpoint
+   * @returns {Promise<Object>} LSP info from get_info endpoint
+   */
+  async fetchLspInfoDirectly(lspUrl) {
+    if (!lspUrl) {
+      console.error("No LSP URL provided");
+      return { success: false, error: "No LSP URL provided" };
+    }
+    
+    try {
+      // Make sure URL ends with a slash
+      if (!lspUrl.endsWith('/')) {
+        lspUrl += '/';
+      }
+      
+      const url = `${lspUrl}get_info`;
+      console.log(`Fetching LSP info directly from: ${url}`);
+      
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+      
+      const lspInfo = await response.json();
+      console.log("Successfully retrieved LSP info directly:", lspInfo);
+      
+      // Save the info in the manager
+      this.updateLspInfo(lspInfo);
+      
+      return { 
+        success: true, 
+        lspInfo: lspInfo 
+      };
+    } catch (error) {
+      console.error("Error fetching LSP info directly:", error);
+      return { 
+        success: false, 
+        error: error.message || "Failed to fetch LSP info" 
+      };
+    }
   },
   
   /**
@@ -56,30 +107,22 @@ window.LspManager = {
     
     console.log("Processing LSP channel options from:", lspInfo);
     
-  
-    const minLspBalance = this.getNumberProperty(lspInfo, 'min_initial_lsp_balance_sat');
-    const maxLspBalance = this.getNumberProperty(lspInfo, 'max_initial_lsp_balance_sat');
-    
-    // Use the appropriate min/max values
-    const minChannelSize = minLspBalance
-    const maxChannelSize = maxLspBalance;
+    // Extract min and max channel sizes directly from min_initial_lsp_balance_sat and max_initial_lsp_balance_sat
+    const minChannelSize = parseInt(lspInfo.min_initial_lsp_balance_sat || '0', 10);
+    const maxChannelSize = parseInt(lspInfo.max_initial_lsp_balance_sat || '0', 10);
     
     // Use 1M sats as default channel size, constrained by min/max
-    const defaultSats = Math.min(Math.max(1000000, minChannelSize), maxChannelSize);
+    const defaultChannelSize = Math.min(Math.max(1000000, minChannelSize), maxChannelSize);
     
     console.log("Channel option calculations:", {
-      minSats, maxSats, minChannelSize, maxChannelSize, defaultSats
+      minChannelSize, maxChannelSize, defaultChannelSize
     });
     
-    // Build and return the options object
+    // Return only the three essential values
     return {
       minChannelSize: minChannelSize,
       maxChannelSize: maxChannelSize,
-      defaultChannelSize: defaultSats,
-      minSats: minChannelSize,
-      maxSats: maxChannelSize,
-      instantSwap: lspInfo.min_required_channel_confirmations === 0,
-      zeroReserve: !!lspInfo.supports_zero_channel_reserve
+      defaultChannelSize: defaultChannelSize
     };
   },
   
@@ -94,27 +137,5 @@ window.LspManager = {
     
     const size = parseFloat(channelSize);
     return size >= options.minChannelSize && size <= options.maxChannelSize;
-  },
-  
-  /**
-   * Get a numeric property from an object
-   * @param {Object} obj - The object to extract from
-   * @param {string} key - Key to get
-   * @returns {number} The extracted number value
-   */
-  getNumberProperty(obj, key) {
-    if (!obj || !key) return 0;
-    
-    // Get the value, which could be a string or number
-    const value = obj[key];
-    
-    // Parse to number if it's a string, or use as is if it's already a number
-    if (typeof value === 'string') {
-      return parseInt(value, 10) || 0;
-    } else if (typeof value === 'number') {
-      return value;
-    }
-    
-    return 0;
   }
 };

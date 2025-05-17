@@ -7,9 +7,9 @@ window.ChannelSizeSlider = function(props) {
     disabled
   } = props;
   
-  // Parse options with fallbacks to ensure the slider always has valid values
-  const minSats = options && options.minSats ? parseInt(options.minSats, 10) : 150000; // Min 150k sats fallback (min_initial_lsp_balance_sat)
-  const maxSats = options && options.maxSats ? parseInt(options.maxSats, 10) : 16000000; // 16M sats fallback (max_initial_lsp_balance_sat)
+  // Parse options with fallbacks for min/max channel size
+  const minSats = options && options.minChannelSize ? parseInt(options.minChannelSize, 10) : 100000;
+  const maxSats = options && options.maxChannelSize ? parseInt(options.maxChannelSize, 10) : 16777216;
   
   // Default to 1M sats if no channel size is provided or if it's outside the valid range
   const defaultChannelSize = 1000000;
