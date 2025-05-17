@@ -102,6 +102,19 @@ Note that LSPS1 is designed using [hold invoices](https://bitcoinops.org/en/topi
 
 THE CLIENT is polling THE LSP's [get order](https://github.com/lightning/blips/blob/master/blip-0051.md#21-lsps1get_order)  endpoint, and displays an appropriate failure or success message when the `get_order` endpoint produces a relevant result. 
 
+
+## Testing this plugin  
+Typically, it seems that entites who are developing BTCPay server plugins are encouraged to use a Docker setup, with all the major ancillary services (NBXplorer, Bitcoind, Lightning Node) [running in regtest](https://docs.btcpayserver.org/Development/LocalDev/#dependencies).
+
+This is a great idea, but, after some confusion about the issue, we decided that there would be no practical way to use or test this plugin on regtest: The plugin is wholly reliant on external services provided by THE LSP, accessible over HTTPS.  Theoretically you could replicate THE LSP locally, but then you would have to run your own server-side LSP service, and that would be very complicated. 
+
+Therefore, unless anyone else has a bright idea, our best suggestion is to use a test this plugin with a Docker Compose file that looks [something like this](https://github.com/MegalithicBTC/btcpayserver-docker/blob/master/docker-compose-ubuntu-caddy.yml) -- this shows the major services all running on Mainnet. 
+
+It would also be possible to modify the plugin to allow THE CLIENT to choose between MutinyNet/Signet and Mainnet, as several of the LSPs have duplicate instances running on [MutinyNet/Signet](https://docs.megalithic.me/lightning-services/lsp1-get-inbound-liquidity-for-mobile-clients#step-1-client-requests-info-about-the-lsp-service).
+
+
+
+
 ## Issues for future investigation
 
 ### Client-side channel data
@@ -134,10 +147,14 @@ In general, we think it's better to not attempt to persist state to BTCPay Serve
 
 That said, this seems lower priority than [Client-side channel data](#client-side-channel-data), which would serve a similar purpose but also most critically provide the actual **balances** available in existing channels.
 
+### Footnotes
+
+[^1]: Accepting zero-confirmation channels has security implications for the RECEIVER of the channel.  For this reason, all of the node implementations require special settings to allow inbound zero-confirmation channels.
+
+For example with LND: an LND node must a special configuration value set to receive zero-conf channels, and it must additionally have a subscription CONSTANTLY RUNNING called a [channel acceptor](https://lightning.engineering/api-docs/api/lnd/lightning/channel-acceptor/), which basically intercepts inbound channel requests and returns "yes" or "no" if the inbound channel requests should be "allowed" to be zero-conf. This script has the unpleasant property that, if the backing LND node has a hiccup of some kind, the subscription will just quietly die without much notice ... and an LND node in "channel acceptor" mode will actually refuse ALL inbound channel requests if it sees that an "acceptor" subscription is NOT running. This can be not-so-fun.
 
 
-[^1]: This is the footnote content.
-
+For CLN, users have the opportunity [to do battle](https://github.com/voltagecloud/zero-conf-cln) with various third-party plugins which might (or might not) allow them to successful open a zero-confirmation channel.
 
 
 
