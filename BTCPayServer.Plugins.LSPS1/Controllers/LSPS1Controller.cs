@@ -66,7 +66,7 @@ namespace BTCPayServer.Plugins.LSPS1.Controllers
                 StoreId = storeId,
                 AvailableLsps = _lspProviderService.GetAllLsps(),
                 ConnectedLsp = connectedLsp,
-                SelectedLspSlug = "megalith-lsp", // Default to Megalith LSP
+                SelectedLspSlug = "megalith-lsp", 
                 LspInfo = lspInfo,
                 NodePublicKey = nodePublicKey ?? string.Empty,
                 UserHasLightningNode = userHasLightningNode,

@@ -22,13 +22,7 @@ document.addEventListener("DOMContentLoaded", () => {
         } catch (parseError) {
           console.error("Error parsing LSPS1 data:", parseError);
         }
-      }
-      // Add the CSRF token which we still need to get separately for security reasons
-      const xsrfElement = document.getElementById('request-verification-token');
-      if (xsrfElement) {
-        props.xsrfToken = xsrfElement.dataset.token || '';
-      }
-      
+      }      
       // Render the app using React 18's createRoot API
       const root = ReactDOM.createRoot(rootElement);
       root.render(React.createElement(window.LSPS1App, props));

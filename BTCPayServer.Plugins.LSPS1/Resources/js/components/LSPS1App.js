@@ -6,7 +6,7 @@ window.LSPS1App = function(props) {
   const [lspInfo, setLspInfo] = React.useState(props.lspInfo || {});
   const [fetchingLspInfo, setFetchingLspInfo] = React.useState(false);
   const [lspErrorMessage, setLspErrorMessage] = React.useState("");
-  const [selectedLspSlug, setSelectedLspSlug] = React.useState(props.selectedLspSlug || 'megalith-lsp');
+  const [selectedLspSlug, setSelectedLspSlug] = React.useState(props.selectedLspSlug);
   const [channelSize, setChannelSize] = React.useState(1000000); // Default 1M sats
   const [orderResult, setOrderResult] = React.useState(null);
   const [lspUrl, setLspUrl] = React.useState(props.lspUrl || "");
@@ -50,7 +50,7 @@ window.LSPS1App = function(props) {
         console.error("Failed to get LSP info:", data.error);
         setUserNodeIsConnectedToLsp(false);
         setUserNodeFailedToConnectToLsp(true);
-        setLspErrorMessage(data.error || "LSP failure, please try a different LSP.");
+        setLspErrorMessage(data.error || "Something went wrong when we tried to get info from the LSP. You could try again or choose a diferrent LSP.");
         return false;
       }
     } catch (error) {
