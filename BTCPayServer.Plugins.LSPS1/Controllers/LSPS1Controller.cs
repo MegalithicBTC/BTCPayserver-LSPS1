@@ -16,18 +16,15 @@ namespace BTCPayServer.Plugins.LSPS1.Controllers
     [Authorize(AuthenticationSchemes = AuthenticationSchemes.Cookie)]
     public sealed class LSPS1Controller : Controller
     {
-        private readonly LSPS1Service _lsps1Service;
         private readonly LspProviderService _lspProviderService;
         private readonly LightningNodeService _lightningNodeService;
         private readonly ILogger<LSPS1Controller> _logger;
 
         public LSPS1Controller(
-            LSPS1Service lsps1Service,
             LspProviderService lspProviderService,
             LightningNodeService lightningNodeService,
             ILogger<LSPS1Controller> logger)
         {
-            _lsps1Service = lsps1Service;
             _lspProviderService = lspProviderService;
             _lightningNodeService = lightningNodeService;
             _logger = logger;

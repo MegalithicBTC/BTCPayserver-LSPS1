@@ -112,7 +112,13 @@ window.ChannelConfiguration = function(configProps) {
           React.createElement('div', { className: 'form-text text-muted small mt-2' },
             isPublicChannel 
               ? 'Public channels are visible to the network and can be used for routing payments.'
-              : 'Private channels are only known to you and the LSP, offering better privacy but cannot be used for routing.'
+              : 'Private channels are only known to you and the LSP, offering better privacy, but private channels cannot be used for routing.'
+          ),
+          !isPublicChannel && React.createElement('div', { className: 'mt-3' },
+            React.createElement('img', { src: '/Resources/img/add-hop-hints.png', className: 'mb-2', style: { maxWidth: '100%' } }),
+            React.createElement('p', { className: 'form-text text-muted small' },
+              'Private channels add complexity. Be careful to never mix public and private channels with the same LSP. If you use a private channel, please be advised: When generating invoices, you need to select "Add hop hints for private channels to the Lightning invoice."'
+            )
           )
         )
       ),

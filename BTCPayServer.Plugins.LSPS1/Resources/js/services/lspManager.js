@@ -133,16 +133,5 @@ window.LspManager = {
     };
   },
   
-  /**
-   * Validate if a channel size is within the allowed range
-   * @param {number} channelSize - Channel size in satoshis
-   * @param {Object} options - Channel options
-   * @returns {boolean} Whether size is valid
-   */
-  validateChannelSize(channelSize, options) {
-    if (!options) return false;
-    
-    const size = parseFloat(channelSize);
-    return size >= options.minChannelSize && size <= options.maxChannelSize;
-  }
+
 };

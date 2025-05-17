@@ -174,7 +174,7 @@ namespace BTCPayServer.Plugins.LSPS1.Services
                 var client = GetLightningClient(store);
                 if (client == null)
                     return false;
-
+                _logger.LogInformation("Connecting to Lightning node {NodeUri}", nodeUri);
                 await client.ConnectTo(NodeInfo.Parse(nodeUri), cancellationToken);
                 return true;
             }
@@ -235,45 +235,6 @@ namespace BTCPayServer.Plugins.LSPS1.Services
             }
         }
 
-        public async Task<bool> IsNodeAvailable(StoreData store)
-        {
-            try
-            {
-                var network = _networkProvider.GetNetwork<BTCPayNetwork>("BTC");
-                if (network == null)
-                {
-                    return false;
-                }
-
-                var paymentMethod = PaymentTypes.LN.GetPaymentMethodId(network.CryptoCode);
-                if (_handlers.TryGet(paymentMethod) is not LightningLikePaymentHandler handler)
-                {
-                    return false;
-                }
-
-                var paymentMethodDetails = store.GetPaymentMethodConfig<LightningPaymentMethodConfig>(paymentMethod, _handlers);
-                if (paymentMethodDetails == null)
-                {
-                    return false;
-                }
-
-                try
-                {
-                    // Just like the UIPublicLightningNodeInfoController, use handler.GetNodeInfo directly
-                    var nodeInfo = await handler.GetNodeInfo(paymentMethodDetails, null, throws: true);
-                    return nodeInfo.Any();
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error checking if node is available");
-                    return false;
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error checking if node is available");
-                return false;
-            }
-        }
+      
     }
 }

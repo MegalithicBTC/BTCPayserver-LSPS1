@@ -25,8 +25,5 @@ public class Plugin : BaseBTCPayServerPlugin
         // Register our refactored services
         services.AddSingleton<LspProviderService>();
         services.AddSingleton<LightningNodeService>();
-        
-        // Add the main service that coordinates the other services
-        services.AddHttpClient<LSPS1Service>();
     }
 }
