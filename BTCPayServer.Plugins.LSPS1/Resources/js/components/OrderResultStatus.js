@@ -169,12 +169,7 @@ window.OrderResultStatus = {
     // Toggle function for technical details
     const toggleDetails = (e) => {
       e.preventDefault();
-      const detailsSection = document.getElementById('technical-details');
-      if (detailsSection) {
-        const newDisplay = detailsSection.style.display === 'none' ? 'block' : 'none';
-        detailsSection.style.display = newDisplay;
-        setShowDetails(newDisplay === 'block');
-      }
+      setShowDetails(!showDetails);
     };
     
     return React.createElement('div', { className: `${alertClass} mt-3 p-3 rounded` },
@@ -186,10 +181,23 @@ window.OrderResultStatus = {
       statusDetails,
       // Only show invoice if not completed and not failed
       !isCompleted && !isFailed && !hasError && invoiceElement,
-      !isFailed && !hasError && React.createElement('div', { 
+      
+      // Show controls and last polled time first, then the technical details
+      !isFailed && !hasError && React.createElement('div', { className: 'mt-2 d-flex justify-content-between align-items-center' },
+        React.createElement('a', {
+          href: '#',
+          className: 'text-muted small',
+          onClick: toggleDetails
+        }, showDetails ? 'Close detailed response from the LSP' : 'Show detailed response from the LSP'),
+        React.createElement('p', { className: 'text-muted small mb-0' },
+          `Last status check: ${lastPolled.toLocaleTimeString()}`
+        )
+      ),
+      
+      // Technical details section that shows/hides based on state
+      !isFailed && !hasError && showDetails && React.createElement('div', { 
         id: 'technical-details',
-        className: 'mt-3',
-        style: { display: 'none' }
+        className: 'mt-3'
       },
         React.createElement('pre', { 
           className: 'bg-light p-3 rounded small',
@@ -199,17 +207,6 @@ window.OrderResultStatus = {
             orderStatus: statusData,
             lastPolled: lastPolled.toISOString()
           }, null, 2)
-        )
-      ),
-      // Show last polled time
-      !isFailed && !hasError && React.createElement('div', { className: 'mt-2 d-flex justify-content-between align-items-center' },
-        React.createElement('a', {
-          href: '#',
-          className: 'text-muted small',
-          onClick: toggleDetails
-        }, showDetails ? 'Close detailed response from the LSP' : 'Show detailed response from the LSP'),
-        React.createElement('p', { className: 'text-muted small mb-0' },
-          `Last status check: ${lastPolled.toLocaleTimeString()}`
         )
       )
     );

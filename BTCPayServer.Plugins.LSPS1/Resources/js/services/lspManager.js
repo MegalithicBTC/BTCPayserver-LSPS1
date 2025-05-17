@@ -107,15 +107,22 @@ window.LspManager = {
     
     console.log("Processing LSP channel options from:", lspInfo);
     
-    // Extract min and max channel sizes directly from min_initial_lsp_balance_sat and max_initial_lsp_balance_sat
-    const minChannelSize = parseInt(lspInfo.min_initial_lsp_balance_sat || '0', 10);
+    // Use the larger value between min_channel_balance_sat and min_initial_lsp_balance_sat
+    const minChannelSize = Math.max(
+      parseInt(lspInfo.min_initial_lsp_balance_sat || '0', 10),
+      parseInt(lspInfo.min_channel_balance_sat || '0', 10)
+    );
+    
+    // Extract max channel size from max_initial_lsp_balance_sat
     const maxChannelSize = parseInt(lspInfo.max_initial_lsp_balance_sat || '0', 10);
     
     // Use 1M sats as default channel size, constrained by min/max
     const defaultChannelSize = Math.min(Math.max(1000000, minChannelSize), maxChannelSize);
     
     console.log("Channel option calculations:", {
-      minChannelSize, maxChannelSize, defaultChannelSize
+      minChannelSize, 
+      maxChannelSize, 
+      defaultChannelSize
     });
     
     // Return only the three essential values

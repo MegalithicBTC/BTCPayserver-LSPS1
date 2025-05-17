@@ -11,15 +11,19 @@ window.ChannelSizeSlider = function(props) {
   const minSats = options && options.minChannelSize ? parseInt(options.minChannelSize, 10) : 100000;
   const maxSats = options && options.maxChannelSize ? parseInt(options.maxChannelSize, 10) : 16777216;
   
+  // Enforce arbitrary minimum of 150,000 satoshis, regardless of minSats
+  const hardMinimumSats = 150000;
+  const effectiveMinSats = Math.max(hardMinimumSats, minSats);
+  
   // Default to 1M sats if no channel size is provided or if it's outside the valid range
   const defaultChannelSize = 1000000;
   const initialChannelSize = channelSize || defaultChannelSize;
   
   // Ensure the current channelSize respects min/max bounds
-  const validChannelSize = Math.min(Math.max(initialChannelSize, minSats), maxSats);
+  const validChannelSize = Math.min(Math.max(initialChannelSize, effectiveMinSats), maxSats);
   
   // Calculate steps for the slider - we want to show reasonable increments
-  const range = maxSats - minSats;
+  const range = maxSats - effectiveMinSats;
   
   // Use a more granular step size calculation
   // We'll aim for roughly 100-200 steps across the range for smooth sliding
@@ -80,7 +84,7 @@ window.ChannelSizeSlider = function(props) {
     const newSize = parseInt(rawValue, 10);
     
     if (!isNaN(newSize)) {
-      const boundedSize = Math.min(Math.max(newSize, minSats), maxSats);
+      const boundedSize = Math.min(Math.max(newSize, effectiveMinSats), maxSats);
       setDisplaySize(boundedSize);
       setChannelSize(boundedSize);
     }
@@ -88,7 +92,7 @@ window.ChannelSizeSlider = function(props) {
   
   return React.createElement('div', { className: 'channel-size-slider-container' },
     React.createElement('div', { className: 'slider-header' },
-      React.createElement('label', { htmlFor: 'channel-size-slider' }, 'Channel Size:'),
+      React.createElement('label', { htmlFor: 'channel-size-slider' }, 'Channel Size (satoshis):'),
       React.createElement('div', { className: 'slider-value' },
         React.createElement('input', {
           type: 'text',
@@ -98,7 +102,7 @@ window.ChannelSizeSlider = function(props) {
           disabled: disabled
         }),
         React.createElement('span', { className: 'slider-units text-muted' }, 
-          `satoshis (${satsToBtc(displaySize)} BTC)`
+          `${satsToBtc(displaySize)} BTC`
         )
       )
     ),
@@ -108,7 +112,7 @@ window.ChannelSizeSlider = function(props) {
         id: 'channel-size-slider',
         type: 'range',
         className: 'form-range btcpay-input-range',
-        min: minSats,
+        min: effectiveMinSats,
         max: maxSats,
         step: step,
         value: displaySize,
