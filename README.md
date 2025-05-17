@@ -2,7 +2,7 @@
 
 The [LSPS1 (bLIP 51)](https://github.com/lightning/blips/blob/master/blip-0051.md) standard is a user-facing system for  nodes on the Lightning Network to get "inbound capacity", so that they can receive payments.  
 
-This plugin is designed for maximum ease-of-use, such that new and existing BTCPay users could get an inbound channel to their attached or embedded Lightning node in just a few minutes.
+This plugin is designed to implement the client-side of LSPS1, optimizing maximum ease-of-use, such that new and existing BTCPay users could get an inbound channel to their attached or embedded Lightning node in just a few seconds.
 
 In this application, we have two parties:
 
@@ -14,7 +14,12 @@ THE LSP: This is the service provider who runs an automated service to respond t
  
 LSPS1 calls fo communication between THE CLIENT and THE LSP to be [carried over Lightning's BOLT8 transport layer](https://github.com/lightning/blips/blob/b48e5db6864d1de6e4b6d71a73ad75569cbff20c/blip-0051.md?plain=1#L14).
 
-BOLT8 is more private than HTTPs, and has other advantages, however, the practical difficulties of a BTCPay Server plugin attempting to communicate **through** an attached Lightning node to an external service are daunting:  As we will see in this documentation, BTCPay Server's ability to communicate and manipulate its attached Lightning node are (currently) somewhat rudimentary, and furthermore, BTCPay Server can be used with many different kinds of Lightning nodes, many of which don't yet have support for ad-hoc BOLT 8 messaging.
+BOLT8 is more private than HTTPs, and has other advantages, however, the practical difficulties of a BTCPay Server plugin attempting to communicate **through** an attached Lightning node to an external service are daunting:  As we will see in this documentation, BTCPay Server's ability to query or manipulate its attached Lightning node are (currently) somewhat rudimentary.
+
+Furthermore: BTCPay Server can be used with many **different** kinds of Lightning node, many of which don't yet have support for ad-hoc BOLT 8 messaging.  For a plugin to attempt to communicate with an LSP like 
+`Client --> BTCPay Server --> Lightning Node (of any kind) --> LSP`...
+
+... this would be really, really complicated. 
 
 So, for this application, almost all communication between the CLIENT and the THE LSP is carried over HTTPs.
 
@@ -22,7 +27,7 @@ Besides this one caveat, this plugin is designed to comply fully with LSPS1.[^2]
 
 ## Design principles
 
-BTCPay Server is a complex application with several layers of APIs added at various points in its lifetime.  At the same time, security is extremely important, so it's critical that plugins only use Server-side functionality when absolutely necessary.
+BTCPay Server is a complex application with several layers of APIs added at various points during in its lifetime.  It's also written in a language (C#) that only a small minority of developers have experience with. At the same time, security is extremely important. All this adds up to a requirement for plugin developers: Only use server-side (C#, dotnet) functionality in your plugin where absolutely necessary.
  
 For this reason, we've tried to push as much of the complexity as possible of this plugin to the client side, in Javascript.
 
