@@ -54,9 +54,7 @@ The code to perform these operations is simple, and we invite you to review it i
 
 ### Using the plugin
 
-THE CLIENT installs the plugin.
-
-Following a nice cup of tea, or perhaps a well-earned bong hit, THE CLIENT, running BTCPayer server, uses the "Get Lightning Channel" link, which is displayed amongst the list of available plugins.
+THE CLIENT installs the plugin, and uses the "Get Lightning Channel" link, which is displayed amongst the list of available plugins.
 
 <img src="BTCPayServer.Plugins.LSPS1/Resources/docs/img/get-lightning-channel-menu-button.png" alt="Get Lightning Channel Menu Button" width="250" />
 
@@ -89,7 +87,7 @@ A widely-held learned experience on the Lightning network is that opening channe
 
 Small channels can only route limited payments until they are depleted.
 
-But the biggest problem is that small channels can, during times of high fees, become uneconomical to close. And when dealing with interactions between different Lightning implementations (for example, a channel between a CLN node and an LND node), it's possible to get in a situation where one side of the channel will "refuse to close" a channel because doing so would be uneconomical. Then even worse things can happen, where, for example, one node disconnects from the other node and refuses to reconnect. 
+But the biggest problem is that small channels can, during times of high fees, become uneconomical to close. When dealing with interactions between different Lightning implementations (for example, a channel between a CLN node and an LND node), it's possible to get in a situation where one side of the channel will "refuse to close" a channel because doing so would be uneconomical. Then even worse things can happen, where, for example, one node disconnects from the other node and refuses to reconnect. 
 
 For this reason, we:
 
@@ -187,7 +185,7 @@ That said, this seems lower priority than [Client-side channel data](#client-sid
 
 [^1]: Well... compliant, but we don't implement all features.  For one thing: We totally don't allow THE CLIENT to pay for his/her channel with an on-chain payment. If you care, ask us and we can explain why. There are both security and UX issues with onchain payments which make Lightning payments for channel openings a lot better.
 
-[^2]: Accepting zero-confirmation channels has security implications for the RECEIVER of the channel.  For this reason, all of the node implementations require special settings to allow inbound zero-confirmation channels. For example: an LND node must have a special configuration value set to receive zero-conf channels, and it must additionally have a subscription CONSTANTLY RUNNING against the node called a [channel acceptor](https://lightning.engineering/api-docs/api/lnd/lightning/channel-acceptor/), which basically intercepts inbound channel requests and returns "yes" or "no" if the inbound channel requests should be "allowed" to be zero-conf. This script has the unpleasant property that, if the backing LND node has a hiccup of some kind, the subscription will just quietly die without much notice ... and an LND node in "channel acceptor" mode will actually refuse ALL inbound channel requests if it sees that an "acceptor" subscription is NOT running. This can be not-so-fun. For CLN, users have the opportunity [to do battle](https://github.com/voltagecloud/zero-conf-cln) with various third-party plugins which might (or might not) allow them to successful open a zero-confirmation channel. For LDK, zero-conf channels are much easier, but 95% of BTCPay users are likely using LND or CLN.  
+[^2]: Accepting zero-confirmation channels has security implications for the RECEIVER of the channel.  For this reason, all of the node implementations require special settings to allow inbound zero-confirmation channels. For example: an LND node must have a special configuration value set to receive zero-conf channels, and it must additionally have a subscription CONSTANTLY RUNNING against the node called a [channel acceptor](https://lightning.engineering/api-docs/api/lnd/lightning/channel-acceptor/), which basically intercepts inbound channel requests and returns "yes" or "no" if the inbound channel requests should be "allowed" to be zero-conf. This script has the unpleasant property that, if the backing LND node has a hiccup of some kind, the subscription will just quietly die without much notice ... and an LND node in "channel acceptor" mode will actually refuse ALL inbound channel requests if it sees that an "acceptor" subscription is NOT running. This can be not-so-fun. For CLN, users have the opportunity [to do battle](https://github.com/voltagecloud/zero-conf-cln) with various third-party plugins which might (or might not) allow them to successful open a zero-confirmation channel. For LDK, zero-conf channels are much easier, but 95% of BTCPay users are likely using LND or CLN.    
 
 
 
