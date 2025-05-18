@@ -2,11 +2,18 @@
 
 https://github.com/user-attachments/assets/b16db320-ab0d-4632-b350-de4023cab639
 
+
+### About LSPS1
+
 The [LSPS1 (BLIP 51)](https://github.com/lightning/blips/blob/master/blip-0051.md) standard is a user-facing system for nodes on the Lightning Network to get "inbound capacity", so that they can receive payments.  
+
+### About this implementation
 
 This plugin is designed to implement the client-side behavior of LSPS1, while optimizing for simplicity. We've made certain choices for the user in order to try to prevent "footguns", and also to maximize compatibility across various node implementations.
 
 Our goal is that a new or existing BTCPay user could get an inbound channel to an attached or embedded Lightning node in just a few seconds.
+
+### Who is involved
 
 In this application, we have two parties:
 
