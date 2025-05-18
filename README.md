@@ -29,16 +29,17 @@ LSPS1 calls for communication between THE CLIENT and THE LSP to be [carried over
 
 BOLT 8 is more private than HTTPS, and has other advantages, however, there would be serious practical difficulties in implementing BOLT 8 communication for BTCPay. 
 
-A BTCPay Server plugin attempting to communicate **through** an attached or embedded Lightning node to an external service would be a very ambitious thing to attempt:  As we will see in this documentation, BTCPay Server's ability to query or manipulate its attached Lightning node is (currently) quite rudimentary.
+A BTCPay Server plugin attempting to communicate **through** an attached or embedded Lightning node to an external service would be a very tricky to implement:  As we will see in this documentation, BTCPay Server's ability to query or manipulate its attached Lightning node is (currently) quite rudimentary.
 
 Furthermore: BTCPay Server can be used with many **different** kinds of Lightning nodes, many of which don't yet have support for ad-hoc BOLT 8 messaging.  
 
-So: For a plugin to attempt to communicate with an LSP like 
-`Client --> BTCPay Server --> Lightning Node --> LSP`...
-
+So: For a plugin to attempt to communicate with an LSP like... 
+```
+Client --> BTCPay Server --> Lightning Node --> LSP
+```
 ... this would be really, really, complicated, and would leave quite a few opportunities for hard-to-diagnose bugs and edge cases.  
 
-Therefore, for this application, almost all communication between THE CLIENT and the THE LSP is carried over HTTPS. (**Almost** all, because, of course, the actual channel opening negotiation happens via the standard Lightning protocol.)
+Therefore, for this application, almost all communication between THE CLIENT and the THE LSP is carried over HTTPS. (**Almost** all, because, of course, the actual channel opening negotiation happens via the standard Lightning [channel establishment protocol](https://github.com/lightning/bolts/blob/master/02-peer-protocol.md#channel-establishment-v1).)
 
 Besides this one caveat, this plugin is designed to comply fully with LSPS1.[^1]
 
