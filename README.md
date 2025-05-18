@@ -29,7 +29,7 @@ LSPS1 calls for communication between THE CLIENT and THE LSP to be [carried over
 
 BOLT 8 is more private than HTTPS, and has other advantages, however, there would be serious practical difficulties in implementing BOLT 8 communication for BTCPay. 
 
-A BTCPay Server plugin attempting to communicate **through** an attached or embedded Lightning node to an external service would be a very tricky to implement:  As we will see in this documentation, BTCPay Server's ability to query or manipulate its attached Lightning node is (currently) quite rudimentary.
+A BTCPay Server plugin attempting to communicate **through** an attached or embedded Lightning node to an external service would be very tricky to implement:  As we will see in this documentation, BTCPay Server's ability to query or manipulate its attached Lightning node is (currently) quite rudimentary.
 
 Furthermore: BTCPay Server can be used with many **different** kinds of Lightning nodes, many of which don't yet have support for ad-hoc BOLT 8 messaging.  
 
@@ -181,7 +181,7 @@ Further investigation however has let us to believe that there is currently [no 
 
 But, daring to dream: Client-side channel data could also help users answer what will likely be a common question: "I paid the invoice to get the channel, I think I got the channel, but where can I see it?"
 
-Currently THE CLIENT has to know, that, if we wants to see their freshly opened channel, he needs to open a separate interface, for example "Ride The Lightning", in order to see the channel that was opened following the successful usage of this plugin.
+Currently THE CLIENT has to know, that, if they want to see their freshly opened channel, they need to open a separate interface, for example "Ride The Lightning", in order to see the channel that was opened following the successful usage of this plugin.
 
 ### Client-side persistence
 
