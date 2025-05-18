@@ -51,7 +51,7 @@ It's also written in a language (C#) which only a small minority of developers h
 
 All this adds up (in our view) to a requirement for plugin developers: Only use server-side (C#, dotnet) functionality in your plugin where **absolutely necessary**. The fewer points of contact between your code and BTCPay server's API, the fewer points of failure (or security holes) you should have. 
  
-For this reason, we've tried to push as much of the complexity as possible of this plugin to the client side, to everyone's favorite client-side language: JavaScript.
+For this reason, we've tried to push as much of the complexity as possible of this plugin to the client side, to everyone's favorite little client-side language: JavaScript.
 
 We rely on C# methods in BTCPay Server for only two purposes:
 1. We validate that THE CLIENT has a Lightning node attached to his/her BTCPay Server instance, and get the `public_key` of this Lightning node.
