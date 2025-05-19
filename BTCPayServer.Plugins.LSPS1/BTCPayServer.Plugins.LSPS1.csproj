@@ -23,13 +23,14 @@
 
   <!-- ── Project references (core + abstractions) ───── -->
   <ItemGroup>
-    <ProjectReference Include="..\..\btcpayserver\BTCPayServer.Abstractions\BTCPayServer.Abstractions.csproj"
-                      Private="false" StaticWebAssetsEnabled="false"
-                      ExcludeAssets="runtime;native;build;buildTransitive;contentFiles" />
+     <ProjectReference Include="../btcpayserver/BTCPayServer.Abstractions/BTCPayServer.Abstractions.csproj"
+                    Private="false" StaticWebAssetsEnabled="false"
+                    ExcludeAssets="runtime;native;build;buildTransitive;contentFiles" />
 
-    <ProjectReference Include="..\..\btcpayserver\BTCPayServer\BTCPayServer.csproj"
-                      Private="false" StaticWebAssetsEnabled="false"
-                      ExcludeAssets="runtime;native;build;buildTransitive;contentFiles" />
+  <ProjectReference Include="../btcpayserver/BTCPayServer/BTCPayServer.csproj"
+                    Private="false" StaticWebAssetsEnabled="false"
+                    ExcludeAssets="runtime;native;build;buildTransitive;contentFiles" />
+
 
     <EmbeddedResource Include="Resources\**" />
       <!-- <Watch Include="Resources\**\*.js" />
