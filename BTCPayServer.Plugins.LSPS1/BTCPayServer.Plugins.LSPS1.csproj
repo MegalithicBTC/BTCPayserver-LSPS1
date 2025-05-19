@@ -18,7 +18,7 @@
   <PropertyGroup>
     <Product>BTCPay Server – LSPS-1 plugin</Product>
     <Description>Quickly obtain inbound Lightning capacity via LSPS-1</Description>
-    <Version>0.1.2</Version>
+    <Version>0.1.4</Version>
   </PropertyGroup>
 
   <!-- ── Project references (core + abstractions) ───── -->
