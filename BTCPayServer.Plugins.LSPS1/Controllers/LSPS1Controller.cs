@@ -1,4 +1,5 @@
 using BTCPayServer.Abstractions.Constants;
+using BTCPayServer.Abstractions.Extensions;
 using BTCPayServer.Plugins.LSPS1.Models;
 using BTCPayServer.Plugins.LSPS1.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -9,6 +10,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
+
 
 namespace BTCPayServer.Plugins.LSPS1.Controllers
 {
@@ -44,6 +46,9 @@ namespace BTCPayServer.Plugins.LSPS1.Controllers
             }
 
             _logger.LogInformation("LSPS1Controller: Found store {StoreId}, Name: {StoreName}", storeId, store.StoreName);
+
+               // Add this line to explicitly set the store in the HTTP context
+            HttpContext.SetStoreData(store);
 
             // First check if a valid Lightning node configuration exists
             string? nodePublicKey = await _lightningNodeService.GetNodePublicKey(store);

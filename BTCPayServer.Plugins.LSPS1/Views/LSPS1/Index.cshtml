@@ -6,8 +6,18 @@
 @model BTCPayServer.Plugins.LSPS1.Controllers.LSPS1Controller.PluginPageViewModel
 
 @{
-    ViewData.SetActivePage(PluginNavPages.Index, "Get Lightning Channel");
-    var xsrf = AntiXsrf.GetAndStoreTokens(Context).RequestToken;
+
+    var store = Context.GetStoreData();
+    if (store != null)
+    {
+        ViewData.SetActivePage(PluginNavPages.Index, "Get Lightning Channel", store.Id);
+        // Add this line to explicitly set the store context
+        ViewData["StoreId"] = store.Id;
+    }
+    else
+    {
+        ViewData.SetActivePage(PluginNavPages.Index, "Get Lightning Channel", null);
+    }
 }
 
 <h1>
@@ -30,7 +40,7 @@
 </script>
 
 <!-- Add CSRF token separately as it's not part of our model -->
-<div id="request-verification-token" data-token="@xsrf" style="display: none;"></div>
+@* <div id="request-verification-token" data-token="@xsrf" style="display: none;"></div> *@
 
 <!-- Include BTCPay's QR Code library first -->
 <script src="~/js/qrcode.js" asp-append-version="true"></script>
