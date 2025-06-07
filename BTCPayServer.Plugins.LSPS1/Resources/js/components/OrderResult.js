@@ -107,7 +107,7 @@ window.OrderResult = function(resultProps) {
       };
     }
     
-    if (!orderResult.success) {
+    if (!orderResult.success || !currentStatusData?.order_state) {
       return {
         heading: 'Error',
         message: orderResult.message || 'Failed to get options for channel opening.'
