@@ -14,33 +14,38 @@
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 
-  <!-- ── Plugin metadata (optional) ─────────────────── -->
+  <!-- ── Plugin metadata ─────────────────────────────── -->
   <PropertyGroup>
     <Product>BTCPay Server – LSPS-1 plugin</Product>
     <Description>Quickly obtain inbound Lightning capacity via LSPS-1</Description>
     <Version>0.1.5</Version>
   </PropertyGroup>
 
+  <!-- ── Unique identifiers (stop name collisions) ──── -->
+  <PropertyGroup>
+    <RestoreProjectName>BTCPayServer.Plugins.LSPS1</RestoreProjectName>
+    <AssemblyName>BTCPayServer.Plugins.LSPS1</AssemblyName>
+    <PackageId>BTCPayServer.Plugins.LSPS1</PackageId>
+  </PropertyGroup>
+
   <!-- ── Project references (core + abstractions) ───── -->
   <ItemGroup>
-     <ProjectReference Include="../btcpayserver/BTCPayServer.Abstractions/BTCPayServer.Abstractions.csproj"
-                    Private="false" StaticWebAssetsEnabled="false"
-                    ExcludeAssets="runtime;native;build;buildTransitive;contentFiles" />
+    <!-- → points two levels up to your forked btcpayserver directory -->
+    <ProjectReference Include="../../btcpayserver/BTCPayServer.Abstractions/BTCPayServer.Abstractions.csproj"
+                      Private="false" StaticWebAssetsEnabled="false"
+                      ExcludeAssets="runtime;native;build;buildTransitive;contentFiles" />
 
-  <ProjectReference Include="../btcpayserver/BTCPayServer/BTCPayServer.csproj"
-                    Private="false" StaticWebAssetsEnabled="false"
-                    ExcludeAssets="runtime;native;build;buildTransitive;contentFiles" />
-
+    <ProjectReference Include="../../btcpayserver/BTCPayServer/BTCPayServer.csproj"
+                      Private="false" StaticWebAssetsEnabled="false"
+                      ExcludeAssets="runtime;native;build;buildTransitive;contentFiles" />
 
     <EmbeddedResource Include="Resources\**" />
-      <!-- <Watch Include="Resources\**\*.js" />
-  <Watch Include="Resources\**\*.css" /> -->
   </ItemGroup>
 
-  <!-- ── NuGet packages we use directly ─────────────── -->
-  <ItemGroup>
-    <PackageReference Include="BTCPayServer.Lightning.All"     Version="1.6.9" PrivateAssets="all" />
-    <PackageReference Include="NBitcoin"                       Version="8.0.8" PrivateAssets="all" />
-  </ItemGroup>
+ <!-- ── NuGet packages used directly ───────────────── -->
+<ItemGroup>
+  <PackageReference Include="BTCPayServer.Lightning.All" Version="1.6.11" PrivateAssets="all" />
+  <PackageReference Include="NBitcoin" Version="8.0.13" PrivateAssets="all" />
+</ItemGroup>
 
 </Project>
