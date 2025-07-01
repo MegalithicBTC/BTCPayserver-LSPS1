@@ -44,7 +44,7 @@
 
  <!-- ── NuGet packages used directly ───────────────── -->
 <ItemGroup>
-  <PackageReference Include="BTCPayServer.Lightning.All" Version="1.6.11" PrivateAssets="all" />
+  <!-- <PackageReference Include="BTCPayServer.Lightning.All" Version="1.6.11" PrivateAssets="all" /> -->
   <PackageReference Include="NBitcoin" Version="8.0.13" PrivateAssets="all" />
 </ItemGroup>
 
