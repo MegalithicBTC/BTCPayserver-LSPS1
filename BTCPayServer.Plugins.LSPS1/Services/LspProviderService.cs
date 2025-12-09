@@ -36,7 +36,7 @@ namespace BTCPayServer.Plugins.LSPS1.Services
                 },
                 new LspProvider { 
                     Slug = "amboss-lsp", 
-                    Name = "Magma By Amboss LSP", 
+                    Name = "Magma LSP: Economy Class", 
                     Url = "https://magma.amboss.tech/api/lsp/v1/cheapest" 
                 }
             };
