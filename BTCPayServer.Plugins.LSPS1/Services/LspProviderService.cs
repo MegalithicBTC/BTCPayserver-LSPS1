@@ -33,6 +33,11 @@ namespace BTCPayServer.Plugins.LSPS1.Services
                     Slug = "flashsats-lsp", 
                     Name = "Flashsats LSP", 
                     Url = "https://lsp.flashsats.xyz/api/v1" 
+                },
+                new LspProvider { 
+                    Slug = "amboss-lsp", 
+                    Name = "Magma By Amboss LSP", 
+                    Url = "https://magma.amboss.tech/api/lsp/v1/cheapest" 
                 }
             };
         }
