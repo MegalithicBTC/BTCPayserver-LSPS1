@@ -57,7 +57,7 @@ window.ChannelOrderManager = {
     }
     
     try {
-      console.log(`Creating channel order: ${channelSize} sats, private: ${isPrivate}, channel duration: ${duration} blocks`);
+      console.log(`Creating channel order: ${channelSize} sats, private: ${isPrivate}`);
       
       const response = await window.LspApiService.createOrder(lspInfo, this.nodePublicKey, channelSize, isPrivate);
       
