@@ -21,7 +21,7 @@ window.LspApiService = {
       return { success: false, error: "Missing required parameters" };
     }
 
-    const channel_expiry_blocks = Math.max(duration, 13140);
+    const channel_expiry_blocks = Math.min(duration, 13140);
     
     try {
       console.log(`Creating channel order directly with LSP for ${channelSizeInSats} sats, private: ${isPrivateChannel}`);
