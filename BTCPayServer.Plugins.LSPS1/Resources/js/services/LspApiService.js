@@ -15,11 +15,13 @@ window.LspApiService = {
   },
   
   // Create an order directly with the LSP
-  async createOrder(nodePublicKey, channelSizeInSats, isPrivateChannel = false) {
+  async createOrder(nodePublicKey, channelSizeInSats, duration, isPrivateChannel = false) {
     if (!this.lspUrl || !nodePublicKey) {
       console.error("LSP URL and node public key are required for creating an order");
       return { success: false, error: "Missing required parameters" };
     }
+
+    const channel_expiry_blocks = Math.max(duration, 13140);
     
     try {
       console.log(`Creating channel order directly with LSP for ${channelSizeInSats} sats, private: ${isPrivateChannel}`);
@@ -35,7 +37,7 @@ window.LspApiService = {
         client_balance_sat: "0",
         required_channel_confirmations: 1,
         funding_confirms_within_blocks: 6,
-        channel_expiry_blocks: 13140,
+        channel_expiry_blocks,
         token: token,
         announce_channel: !isPrivateChannel
       };
