@@ -10,12 +10,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
+using BTCPayServer.Client;
 
 
 namespace BTCPayServer.Plugins.LSPS1.Controllers
 {
     [Route("stores/{storeId}/plugins/lsps1")]
-    [Authorize(AuthenticationSchemes = AuthenticationSchemes.Cookie)]
+    [Authorize(Policy = Policies.CanModifyStoreSettings, AuthenticationSchemes = AuthenticationSchemes.Cookie)]
     public sealed class LSPS1Controller : Controller
     {
         private readonly LspProviderService _lspProviderService;
@@ -106,6 +107,7 @@ namespace BTCPayServer.Plugins.LSPS1.Controllers
         }
         
         [HttpPost("connect-node")]
+        [IgnoreAntiforgeryToken]
         public async Task<IActionResult> ConnectNode(string storeId, [FromBody] ConnectNodeRequest request)
         {
             if (request == null || string.IsNullOrEmpty(request.Uri))

@@ -2,7 +2,7 @@
 
   <!-- ── Build settings ─────────────────────────────── -->
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
     <PreserveCompilationContext>false</PreserveCompilationContext>
@@ -18,7 +18,7 @@
   <PropertyGroup>
     <Product>BTCPay Server – LSPS-1 plugin</Product>
     <Description>Quickly obtain inbound Lightning capacity via LSPS-1</Description>
-    <Version>0.1.5</Version>
+    <Version>0.1.6</Version>
   </PropertyGroup>
 
   <!-- ── Unique identifiers (stop name collisions) ──── -->
@@ -45,7 +45,7 @@
  <!-- ── NuGet packages used directly ───────────────── -->
 <ItemGroup>
   <!-- <PackageReference Include="BTCPayServer.Lightning.All" Version="1.6.11" PrivateAssets="all" /> -->
-  <PackageReference Include="NBitcoin" Version="8.0.13" PrivateAssets="all" />
+  <PackageReference Include="NBitcoin" Version="9.0.5" PrivateAssets="all" />
 </ItemGroup>
 
 </Project>
