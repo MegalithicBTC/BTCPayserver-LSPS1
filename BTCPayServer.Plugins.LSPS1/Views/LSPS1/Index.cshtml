@@ -1,4 +1,5 @@
 @using BTCPayServer.Abstractions.Extensions
+@using BTCPayServer.Abstractions.Models
 @using BTCPayServer.Plugins.LSPS1.Views
 @using Microsoft.AspNetCore.Antiforgery
 @inject IAntiforgery AntiXsrf
@@ -7,16 +8,16 @@
 
 @{
 
-    var store = Context.GetStoreData();
+    var store = Context.GetStoreDataOrNull();
     if (store != null)
     {
-        ViewData.SetActivePage(PluginNavPages.Index, "Get Lightning Channel", store.Id);
+        ViewData.SetLayoutModel(new LayoutModel(Plugin.MenuId, "Get Lightning Channel").SetCategory(WellKnownCategories.Store));
         // Add this line to explicitly set the store context
         ViewData["StoreId"] = store.Id;
     }
     else
     {
-        ViewData.SetActivePage(PluginNavPages.Index, "Get Lightning Channel", null);
+        ViewData.SetLayoutModel(new(Plugin.MenuId, "Get Lightning Channel"));
     }
 }
 

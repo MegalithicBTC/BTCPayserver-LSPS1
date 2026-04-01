@@ -1,16 +1,16 @@
 @using BTCPayServer.Client
 @using BTCPayServer.Views.Stores
 @using BTCPayServer.Abstractions.Extensions
+@addTagHelper *, BTCPayServer.Abstractions
 
-@{ var store = Context.GetStoreData(); }
+@{ var store = Context.GetStoreDataOrNull(); }
 
 @if (store != null)
 {
     <li class="nav-item" permission="@Policies.CanModifyStoreSettings">
-        <a asp-area="" asp-controller="LSPS1" asp-action="Index" asp-route-storeId="@store.Id" class="nav-link @ViewData.ActivePageClass(PluginNavPages.Index)" id="StoreNav-LSPS1">
+        <a layout-menu-item="@Plugin.MenuId" asp-area="" asp-controller="LSPS1" asp-action="Index" asp-route-storeId="@store.Id">
             @await Html.PartialAsync("LSPS1/LightningIcon")
             <span text-translate="true">Get Lightning Channel</span>
         </a>
     </li>
 }
-

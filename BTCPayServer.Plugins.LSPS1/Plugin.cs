@@ -11,8 +11,10 @@ public class Plugin : BaseBTCPayServerPlugin
 {
     public override IBTCPayServerPlugin.PluginDependency[] Dependencies { get; } =
     {
-        new() { Identifier = nameof(BTCPayServer), Condition = ">=1.12.0" }
+        new() { Identifier = nameof(BTCPayServer), Condition = ">=2.3.7" }
     };
+
+    public const string MenuId = "LSP1";
 
     public override void Execute(IServiceCollection services)
     {
