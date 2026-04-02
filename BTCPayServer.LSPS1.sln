@@ -4,6 +4,20 @@ VisualStudioVersion = 17.5.2.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BTCPayServer.Plugins.LSPS1", "BTCPayServer.Plugins.LSPS1\BTCPayServer.Plugins.LSPS1.csproj", "{05B6F689-B338-6226-9B63-45293B53DAD9}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "btcpayserver", "btcpayserver", "{F2A2ED85-307E-460F-B0DC-4E32574B9BCD}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BTCPayServer", "btcpayserver\BTCPayServer\BTCPayServer.csproj", "{B5329521-BF51-4835-961A-6476FDBE3E22}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BTCPayServer.Abstractions", "btcpayserver\BTCPayServer.Abstractions\BTCPayServer.Abstractions.csproj", "{CA1BBE78-BC57-439C-9D32-0DE2AA3A786A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BTCPayServer.Client", "btcpayserver\BTCPayServer.Client\BTCPayServer.Client.csproj", "{FD02AEFF-1394-4BFA-9A02-B2D2CFDE1288}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BTCPayServer.Rating", "btcpayserver\BTCPayServer.Rating\BTCPayServer.Rating.csproj", "{DBE56CD5-BD46-4E9C-A6F1-C421456BCA8F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BTCPayServer.Data", "btcpayserver\BTCPayServer.Data\BTCPayServer.Data.csproj", "{734D04B7-C728-4881-A221-C6F6592F0EC3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BTCPayServer.Common", "btcpayserver\BTCPayServer.Common\BTCPayServer.Common.csproj", "{78CC898B-62CE-4831-AEC8-BA39B1D866FA}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -14,11 +28,43 @@ Global
 		{05B6F689-B338-6226-9B63-45293B53DAD9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{05B6F689-B338-6226-9B63-45293B53DAD9}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{05B6F689-B338-6226-9B63-45293B53DAD9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B5329521-BF51-4835-961A-6476FDBE3E22}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B5329521-BF51-4835-961A-6476FDBE3E22}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B5329521-BF51-4835-961A-6476FDBE3E22}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B5329521-BF51-4835-961A-6476FDBE3E22}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CA1BBE78-BC57-439C-9D32-0DE2AA3A786A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CA1BBE78-BC57-439C-9D32-0DE2AA3A786A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CA1BBE78-BC57-439C-9D32-0DE2AA3A786A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CA1BBE78-BC57-439C-9D32-0DE2AA3A786A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FD02AEFF-1394-4BFA-9A02-B2D2CFDE1288}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FD02AEFF-1394-4BFA-9A02-B2D2CFDE1288}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FD02AEFF-1394-4BFA-9A02-B2D2CFDE1288}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FD02AEFF-1394-4BFA-9A02-B2D2CFDE1288}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DBE56CD5-BD46-4E9C-A6F1-C421456BCA8F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DBE56CD5-BD46-4E9C-A6F1-C421456BCA8F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DBE56CD5-BD46-4E9C-A6F1-C421456BCA8F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DBE56CD5-BD46-4E9C-A6F1-C421456BCA8F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{734D04B7-C728-4881-A221-C6F6592F0EC3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{734D04B7-C728-4881-A221-C6F6592F0EC3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{734D04B7-C728-4881-A221-C6F6592F0EC3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{734D04B7-C728-4881-A221-C6F6592F0EC3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{78CC898B-62CE-4831-AEC8-BA39B1D866FA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{78CC898B-62CE-4831-AEC8-BA39B1D866FA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{78CC898B-62CE-4831-AEC8-BA39B1D866FA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{78CC898B-62CE-4831-AEC8-BA39B1D866FA}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {CD2B9A29-BF38-4F00-A88C-91973DE971A1}
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{B5329521-BF51-4835-961A-6476FDBE3E22} = {F2A2ED85-307E-460F-B0DC-4E32574B9BCD}
+		{CA1BBE78-BC57-439C-9D32-0DE2AA3A786A} = {F2A2ED85-307E-460F-B0DC-4E32574B9BCD}
+		{FD02AEFF-1394-4BFA-9A02-B2D2CFDE1288} = {F2A2ED85-307E-460F-B0DC-4E32574B9BCD}
+		{DBE56CD5-BD46-4E9C-A6F1-C421456BCA8F} = {F2A2ED85-307E-460F-B0DC-4E32574B9BCD}
+		{734D04B7-C728-4881-A221-C6F6592F0EC3} = {F2A2ED85-307E-460F-B0DC-4E32574B9BCD}
+		{78CC898B-62CE-4831-AEC8-BA39B1D866FA} = {F2A2ED85-307E-460F-B0DC-4E32574B9BCD}
 	EndGlobalSection
 EndGlobal
