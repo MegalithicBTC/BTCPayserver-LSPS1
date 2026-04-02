@@ -54,7 +54,7 @@ window.ChannelConfiguration = function(configProps) {
     setIsGettingPrice(true);
     try {
       // Call the channel order manager to create an order directly with the LSP
-      const result = await window.ChannelOrderManager.createOrder(channelSize, !isPublicChannel);
+      const result = await window.ChannelOrderManager.createOrder(lspInfo, channelSize, !isPublicChannel);
       setOrderResult(result);
     } finally {
       setIsGettingPrice(false);

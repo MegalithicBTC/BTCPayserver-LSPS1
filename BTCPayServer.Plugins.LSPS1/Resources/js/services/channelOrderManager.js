@@ -50,7 +50,7 @@ window.ChannelOrderManager = {
   },
   
   // Create an order with the specified channel size
-  async createOrder(channelSize, isPrivate = false) {
+  async createOrder(lspInfo, channelSize, isPrivate = false) {
     if (!this.nodePublicKey || !this.lspUrl) {
       console.error("Cannot create order - missing required configuration");
       return { success: false, error: "Channel manager not properly configured" };
@@ -59,7 +59,7 @@ window.ChannelOrderManager = {
     try {
       console.log(`Creating channel order: ${channelSize} sats, private: ${isPrivate}`);
       
-      const response = await window.LspApiService.createOrder(this.nodePublicKey, channelSize, isPrivate);
+      const response = await window.LspApiService.createOrder(lspInfo, this.nodePublicKey, channelSize, isPrivate);
       
       if (response.success && response.data) {
         // Extract order details following LSPS1 spec
