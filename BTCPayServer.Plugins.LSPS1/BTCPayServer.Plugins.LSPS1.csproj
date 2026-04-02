@@ -1,51 +1,36 @@
 <Project Sdk="Microsoft.NET.Sdk.Razor">
-
-  <!-- ── Build settings ─────────────────────────────── -->
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
-    <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
-    <PreserveCompilationContext>false</PreserveCompilationContext>
-    <GenerateEmbeddedFilesManifest>true</GenerateEmbeddedFilesManifest>
   </PropertyGroup>
 
-  <!-- ASP.NET Core (controllers, filters, etc.) -->
-  <ItemGroup>
-    <FrameworkReference Include="Microsoft.AspNetCore.App" />
-  </ItemGroup>
-
-  <!-- ── Plugin metadata ─────────────────────────────── -->
+  <!-- Plugin specific properties -->
   <PropertyGroup>
     <Product>BTCPay Server – LSPS-1 plugin</Product>
     <Description>Quickly obtain inbound Lightning capacity via LSPS-1</Description>
     <Version>0.1.6</Version>
   </PropertyGroup>
-
-  <!-- ── Unique identifiers (stop name collisions) ──── -->
+  
+  <!-- Plugin development properties -->
   <PropertyGroup>
-    <RestoreProjectName>BTCPayServer.Plugins.LSPS1</RestoreProjectName>
-    <AssemblyName>BTCPayServer.Plugins.LSPS1</AssemblyName>
-    <PackageId>BTCPayServer.Plugins.LSPS1</PackageId>
+    <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
+    <PreserveCompilationContext>false</PreserveCompilationContext>
+    <GenerateEmbeddedFilesManifest>true</GenerateEmbeddedFilesManifest>
   </PropertyGroup>
+
+  <!-- This will make sure that referencing BTCPayServer doesn't put any artifact in the published directory -->
+  <ItemDefinitionGroup>
+    <ProjectReference>
+      <Properties>StaticWebAssetsEnabled=false</Properties>
+      <Private>false</Private>
+      <ExcludeAssets>runtime;native;build;buildTransitive;contentFiles</ExcludeAssets>
+    </ProjectReference>
+  </ItemDefinitionGroup>
 
   <!-- ── Project references (core + abstractions) ───── -->
   <ItemGroup>
-    <!-- → points two levels up to your forked btcpayserver directory -->
-    <ProjectReference Include="../../btcpayserver/BTCPayServer.Abstractions/BTCPayServer.Abstractions.csproj"
-                      Private="false" StaticWebAssetsEnabled="false"
-                      ExcludeAssets="runtime;native;build;buildTransitive;contentFiles" />
-
-    <ProjectReference Include="../../btcpayserver/BTCPayServer/BTCPayServer.csproj"
-                      Private="false" StaticWebAssetsEnabled="false"
-                      ExcludeAssets="runtime;native;build;buildTransitive;contentFiles" />
-
+    <ProjectReference Include="..\btcpayserver\BTCPayServer\BTCPayServer.csproj" />
     <EmbeddedResource Include="Resources\**" />
   </ItemGroup>
-
- <!-- ── NuGet packages used directly ───────────────── -->
-<ItemGroup>
-  <!-- <PackageReference Include="BTCPayServer.Lightning.All" Version="1.6.11" PrivateAssets="all" /> -->
-  <PackageReference Include="NBitcoin" Version="9.0.5" PrivateAssets="all" />
-</ItemGroup>
 
 </Project>
